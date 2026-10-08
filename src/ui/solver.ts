@@ -435,8 +435,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     setLength(LENGTHS[Number(len.value) - 1] ?? null);
     // Filter what is on screen now; onConstraintInput refetches for the new length after a pause.
     lengthFilter = deskLength;
-    renderAnswersSection();
-    paintAnswers();
+    // With nothing searched yet there is nothing to filter, and the blank board stays as it is.
+    if (current || live) {
+      renderAnswersSection();
+      paintAnswers();
+    }
     onConstraintInput();
   });
 
