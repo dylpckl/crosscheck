@@ -7,7 +7,7 @@ export interface WiktionaryResponse {
 }
 
 export const NAME = 'Wiktionary';
-export const USER_AGENT = 'crosscheck (https://github.com/dylpckl/crossword-helper)';
+export const USER_AGENT = 'crosscheck (https://github.com/dylpckl/crosscheck)';
 
 export function buildUrl(query: string): string {
   return `https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(query.replace(/ /g, '_'))}`;

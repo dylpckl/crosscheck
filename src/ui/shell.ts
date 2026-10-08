@@ -6,7 +6,7 @@
 export type ViewId = 'solver' | 'diagnostics';
 
 export const DONATE_URL = 'https://paypal.me/askdyl';
-export const REPO_URL = 'https://github.com/dylpckl/crossword-helper';
+export const REPO_URL = 'https://github.com/dylpckl/crosscheck';
 export const AUTHOR_URL = 'https://www.dylansmith.dev';
 export const COMMIT = __APP_COMMIT__;
 

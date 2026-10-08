@@ -1,4 +1,4 @@
-# crossword-helper
+# crosscheck
 
 Crosscheck: type a word or phrase, get candidate crossword answers as letter
 tiles plus what it means. Mobile-first PWA, no backend.
