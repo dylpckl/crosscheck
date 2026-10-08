@@ -405,6 +405,8 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
  */
 .desk-only, .desk-controls { display: none; }
 @media (min-width: 1024px) {
+  /* Filtering can shorten the page past the fold; keep the scrollbar's space so nothing jumps sideways. */
+  html { scrollbar-gutter: stable; }
   #app { max-width: none; }
   .appbar { padding-left: 24px; padding-right: 24px; }
   .view { width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: 44px 32px 48px; }
@@ -432,7 +434,8 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   .lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
   #len { width: 100%; height: 44px; margin: 0; accent-color: var(--blue); }
   .ticks { display: flex; justify-content: space-between; margin-top: -6px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .ticks .on { color: var(--blue); font-weight: 700; }
+  /* Colour only: a bolder label would be wider and nudge its neighbours. */
+  .ticks .on { color: var(--blue); }
   .tagbox {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px;
     background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;
