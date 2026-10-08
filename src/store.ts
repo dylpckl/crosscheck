@@ -68,6 +68,12 @@ export type SearchPosition = 'top' | 'bottom';
 export interface Settings {
   theme: Theme;
   liveSearch: boolean;
+  /**
+   * Search as you type on wide screens. A separate setting with its own
+   * default: on desktop the local sources make it cheap and it is the
+   * expected behaviour, on a phone it is opt-in.
+   */
+  liveSearchDesktop: boolean;
   /** Where the search box sits: under the app bar, or docked in thumb reach. */
   searchPosition: SearchPosition;
   /**
@@ -76,7 +82,7 @@ export interface Settings {
    */
   hideAnswers: boolean;
 }
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', liveSearch: false, searchPosition: 'top', hideAnswers: false };
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', liveSearch: false, liveSearchDesktop: true, searchPosition: 'top', hideAnswers: false };
 export function getSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...read<Partial<Settings>>(SETTINGS_KEY, {}) };
 }

@@ -35,8 +35,13 @@ export interface AnswersOpts {
    * (no answers at all) renders as normal — a hand-off is not a spoiler.
    */
   hidden?: boolean;
-  /** Turn the tiles over one by one as they land, from the blank board. */
-  flip?: boolean;
+  /**
+   * Apply lengthFilter even when no answer has that length. The desktop
+   * slider is a constraint the reader set, so an empty result is the honest
+   * answer; the mobile chips are picked from lengths present, so they never
+   * need it.
+   */
+  strictLength?: boolean;
 }
 
 /** Lengths present in the answers, ascending, with how many of each. */
@@ -56,7 +61,7 @@ const isPublished = (a: Answer) => (a.priority ?? 0) >= 1;
 export function renderAnswers(answers: Answer[], req: SolveRequest, opts: AnswersOpts = {}): string {
   const counts = lengthCounts(answers);
   // Ignore a filter nothing matches, so a stale selection can't empty the list.
-  const active = counts.some(([n]) => n === opts.lengthFilter) ? opts.lengthFilter! : null;
+  const active = opts.strictLength || counts.some(([n]) => n === opts.lengthFilter) ? opts.lengthFilter ?? null : null;
   const filtered = active ? answers.filter((a) => a.length === active) : answers;
   const published = filtered.filter(isPublished);
   const related = filtered.filter((a) => !isPublished(a));
@@ -90,7 +95,7 @@ export function renderAnswers(answers: Answer[], req: SolveRequest, opts: Answer
     ? `<h3 class="subhead">Related words <span class="count">${related.length}</span></h3>
        <div class="answers">${related.map((a, i) => row(a, req, published.length + i)).join('')}</div>`
     : '';
-  return `<section class="section${opts.flip ? ' flip' : ''}" id="sec-answers">${head}${chips}${error}${main}${rest}</section>`;
+  return `<section class="section" id="sec-answers">${head}${chips}${error}${main}${rest}</section>`;
 }
 
 /**

@@ -9,10 +9,11 @@ import { rankAnswers } from '../rank';
 import { buildRequest, isBuildError, solve } from '../solve';
 import { getHistory, getSettings, pushHistory } from '../store';
 import { buildLinks } from '../providers/links';
+import { desk } from './layout';
 import type { Shell } from './shell';
 
 export interface Solver {
-  setQuery(q: string, pattern?: string, submit?: boolean): void;
+  setQuery(q: string, pattern?: string, submit?: boolean, length?: number): void;
   refreshHistory(): void;
   /** Re-read settings that affect the solver view (result order). */
   applySettings(): void;
@@ -20,8 +21,6 @@ export interface Solver {
 
 /** Lengths the desktop slider offers after "Any". */
 const LENGTHS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-/** Wide screens get the two-column layout, always-open meaning, and search as you type. */
-const desk = matchMedia('(min-width: 1024px)');
 
 export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   view.innerHTML = `
@@ -93,13 +92,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
    */
   function restrain(req: SolveRequest, answers: Answer[]): { req: SolveRequest; answers: Answer[] } {
     const now = request();
-    if (isBuildError(now) || now.query !== req.query || now.pattern !== req.pattern || now.length !== req.length) return { req, answers };
+    if (isBuildError(now) || !sameFetch(now, req)) return { req, answers };
     return { req: now, answers: rankAnswers(answers, now) };
   }
 
-  /** The request as the inputs stand, desktop constraints included. */
+  /** Whether two requests fetch the same thing; letters are view-time only, so they don't count. */
+  const sameFetch = (a: SolveRequest, b: SolveRequest) => a.query === b.query && a.pattern === b.pattern && a.length === b.length;
+
+  /**
+   * The request as the inputs stand. On desktop the visible controls are the
+   * whole constraint: the parked pattern input is never read there, so
+   * nothing can apply that the reader can't see.
+   */
   function request(): ReturnType<typeof buildRequest> {
-    const built = buildRequest(q.value, p.value);
+    const built = buildRequest(q.value, desk.matches ? '' : p.value);
     if (isBuildError(built)) return built;
     if (deskLength && !built.pattern) built.length = deskLength;
     if (deskLetters) built.letters = deskLetters;
@@ -142,19 +148,12 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   /** Spoiler mode: whether this search's answers have been tapped open. */
   let revealed = false;
 
-  /**
-   * Desktop shows the board face down while there is nothing on it, and the
-   * first answers to land turn its tiles over. Set whenever the blank board
-   * goes up; cleared once a result has flipped in.
-   */
-  let flipNext = false;
-
   function paint() {
     // Meaning first: collapsed, it is one line, so answers still start at the
     // top of the screen — and it never has to be scrolled past a long list to
     // be found. Spoiler mode builds on the same order.
     const body = sections.meaning + sections.answers;
-    if (!body && desk.matches) flipNext = true;
+    if (!body) resetFlip(desk.matches);
     out.innerHTML = body || (desk.matches ? renderBlankMeaning() + renderBlankAnswers() : renderEmpty(getHistory().length === 0));
   }
   /**
@@ -177,14 +176,21 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
    */
   const GATHER_MS = 250;
   const FLIP_MS = 1300;
-  let flipStarted = false;
   /** This search started from the blank board, so its answers turn over as they arrive. */
   let flipSearch = false;
+  /** Whether the first answers of a flipping search have had their gather window yet. */
+  let gathered = false;
   let flipUntil = 0;
   let flipTimer: number | undefined;
+  function resetFlip(on: boolean) {
+    clearTimeout(flipTimer);
+    flipSearch = on;
+    gathered = false;
+    flipUntil = 0;
+  }
   function paintAnswers() {
-    if (flipStarted) {
-      flipStarted = false;
+    if (flipSearch && !gathered) {
+      gathered = true;
       flipUntil = Date.now() + GATHER_MS;
     }
     const wait = flipUntil - Date.now();
@@ -219,13 +225,13 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     if (lengthFilter !== null && !answers.some((a) => a.length === lengthFilter)) lengthFilter = null;
     return lengthFilter;
   }
-  /** Whether this render should turn the tiles over; true once per blank board. */
-  function takeFlip(): boolean {
-    const f = flipNext;
-    flipNext = false;
-    if (f) flipStarted = flipSearch = true;
-    return f;
-  }
+  /**
+   * The length to show. The desktop slider is a standing constraint: it is
+   * never dropped because a partial result has nothing of that length yet,
+   * and a length with no answers shows as none rather than as every length.
+   */
+  const lengthOpts = (answers: Answer[]) =>
+    desk.matches && deskLength ? { lengthFilter: deskLength, strictLength: true } : { lengthFilter: keepLengthFilter(answers) };
   /** Renders from the finished result when there is one, the partial otherwise. */
   function renderAnswersSection() {
     const hidden = getSettings().hideAnswers && !revealed;
@@ -234,12 +240,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       sections.answers = renderAnswers(r.answers, r.request, {
         fromCache: r.fromCache,
         error: r.errors.find((e) => e.provider === 'Datamuse'),
-        lengthFilter: keepLengthFilter(r.answers),
+        ...lengthOpts(r.answers),
         hidden,
-        flip: takeFlip(),
       });
     } else if (live) {
-      sections.answers = renderAnswers(live.answers, live.req, { lengthFilter: keepLengthFilter(live.answers), hidden, flip: takeFlip() });
+      sections.answers = renderAnswers(live.answers, live.req, { ...lengthOpts(live.answers), hidden });
     }
   }
   function renderSections() {
@@ -272,12 +277,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     ctl = null;
     clearTimeout(liveTimer);
     clearTimeout(historyTimer);
-    clearTimeout(flipTimer);
-    flipUntil = 0;
-    flipSearch = false;
     current = null;
     live = null;
-    lengthFilter = deskLength;
+    lengthFilter = null;
     revealed = false;
     sections.meaning = '';
     sections.answers = '';
@@ -307,21 +309,25 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   /** Letters changed: re-rank what we have instantly. Pattern/length changed: refetch. */
   function onConstraintInput() {
     updateHint();
-    if (!current && live) {
-      // Still loading: re-rank what has arrived; the finished result picks the letters up via restrain().
-      live = restrain(live.req, live.answers);
-      renderAnswersSection();
-      paintAnswers();
-    }
-    if (!current) return;
     const built = request();
     if (isBuildError(built)) return;
-    const sameFetch = built.query === current.request.query && built.pattern === current.request.pattern && built.length === current.request.length;
+    // What the controls act on: the finished result, else the partial, else (null) a search still in flight.
+    const inFlight = Boolean(ctl && !ctl.signal.aborted);
+    const base = current?.request ?? live?.req ?? (inFlight ? null : undefined);
+    if (base === undefined) return;
     clearTimeout(liveTimer);
-    if (sameFetch) {
-      current = { ...current, request: built, answers: rankAnswers(current.answers, built) };
-      repaintAll();
+    if (base && sameFetch(built, base)) {
+      if (current) {
+        current = { ...current, request: built, answers: rankAnswers(current.answers, built) };
+        repaintAll();
+      } else if (live) {
+        // Still loading: re-rank what has arrived; the finished result picks the letters up via restrain().
+        live = { req: built, answers: rankAnswers(live.answers, built) };
+        renderAnswersSection();
+        paintAnswers();
+      }
     } else {
+      // Length or pattern changed: refetch, mid-search or not, so the results match the controls.
       liveTimer = window.setTimeout(() => run(true), desk.matches ? 250 : 500);
     }
   }
@@ -332,6 +338,15 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
    * rested on them; a submitted search goes in at once.
    */
   let historyTimer: number | undefined;
+
+  /** Whether Meaning still shows its loading placeholder rather than anything that came back. */
+  let meaningPending = false;
+  /** Loading placeholders for the layout in effect: the face-down board on desktop, skeletons on a phone. */
+  function placeholders() {
+    sections.meaning = desk.matches ? renderBlankMeaning() : skeletonMeaning();
+    sections.answers = desk.matches ? renderBlankAnswers() : skeletonAnswers();
+    meaningPending = true;
+  }
 
   async function run(fromTyping = false) {
     const built = request();
@@ -346,19 +361,17 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     clearTimeout(historyTimer);
     ctl = new AbortController();
     const mine = ctl;
-    lengthFilter = deskLength;
+    lengthFilter = null;
     revealed = false;
     // Typing over results already on screen keeps them until the new ones
     // land, rather than flashing skeletons on every pause.
     const keep = fromTyping && Boolean(current || live);
-    flipSearch = false;
     current = null;
     live = null;
     meaningOpen = false;
+    resetFlip(!keep && desk.matches);
     if (!keep) {
-      sections.meaning = desk.matches ? renderBlankMeaning() : skeletonMeaning();
-      sections.answers = desk.matches ? renderBlankAnswers() : skeletonAnswers();
-      flipNext = desk.matches;
+      placeholders();
       paint();
     }
 
@@ -367,6 +380,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     let liveRef: Parameters<typeof renderMeaning>[1] = null;
     const paintMeaning = () => {
       sections.meaning = renderMeaning(liveDef, liveRef, buildLinks(req.query, liveRef !== null), req.query, [], { open: meaningShown() });
+      meaningPending = false;
       paintMeaningSection();
     };
     if (!desk.matches) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -397,7 +411,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     });
     if (mine.signal.aborted) return;
     const record = () => {
-      pushHistory({ query: req.query, pattern: req.pattern, letters: req.letters, at: Date.now(), topAnswer: result.answers[0]?.answer });
+      const length = req.pattern ? undefined : req.length;
+      pushHistory({ query: req.query, pattern: req.pattern, letters: req.letters, length, at: Date.now(), topAnswer: result.answers[0]?.answer });
       refreshHistory();
     };
     if (fromTyping) historyTimer = window.setTimeout(record, 2000);
@@ -415,8 +430,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   q.addEventListener('input', () => {
     clearBtn.hidden = !q.value;
     if (!q.value.trim()) { clearResults(); return; }
-    // Desktop always searches as you type: the local sources answer instantly, and only the network calls wait out the pause.
-    if ((getSettings().liveSearch || desk.matches) && navigator.onLine && q.value.trim().length >= 3) {
+    // Each layout has its own setting, on by default on desktop. The whole search waits out a short pause, shorter on desktop.
+    const s = getSettings();
+    if ((desk.matches ? s.liveSearchDesktop : s.liveSearch) && navigator.onLine && q.value.trim().length >= 3) {
       clearTimeout(liveTimer);
       liveTimer = window.setTimeout(() => run(true), desk.matches ? 250 : 450);
     }
@@ -424,6 +440,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
 
   // ---- desktop constraints ----
   function setLength(n: number | null) {
+    // Only lengths the slider can show; anything else (say ?p=20 in a link) means any length.
+    if (n !== null && !LENGTHS.includes(n)) n = null;
     deskLength = n;
     len.value = String(n === null ? 0 : LENGTHS.indexOf(n) + 1);
     const label = n === null ? 'Any length' : `${n} letters`;
@@ -434,7 +452,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   len.addEventListener('input', () => {
     setLength(LENGTHS[Number(len.value) - 1] ?? null);
     // Filter what is on screen now; onConstraintInput refetches for the new length after a pause.
-    lengthFilter = deskLength;
     // With nothing searched yet there is nothing to filter, and the blank board stays as it is.
     if (current || live) {
       renderAnswersSection();
@@ -489,7 +506,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       onConstraintInput();
     }
     applySettings();
-    if (!current && !live) paint();
+    if (!current && !live) {
+      // Mid-load, swap in the new layout's placeholders; Meaning only if nothing has landed in it yet.
+      if (sections.answers) {
+        const meaning = sections.meaning;
+        const pending = meaningPending;
+        placeholders();
+        if (!pending) {
+          sections.meaning = meaning;
+          meaningPending = false;
+        }
+        resetFlip(desk.matches);
+      }
+      paint();
+    }
   });
   clearBtn.addEventListener('click', () => {
     q.value = '';
@@ -544,20 +574,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   });
   $('recent').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-q]');
-    if (b) setQuery(b.dataset.q!, b.dataset.p ?? '', true);
+    if (b) setQuery(b.dataset.q!, b.dataset.p ?? '', true, b.dataset.len ? Number(b.dataset.len) : undefined);
   });
 
-  function setQuery(query: string, pattern = '', submit = false) {
+  function setQuery(query: string, pattern = '', submit = false, length?: number) {
     q.value = query;
     clearBtn.hidden = !query;
-    // History stores one constraint string; on desktop it lands in the controls that own each part.
-    const c = parsePattern(pattern);
-    if (desk.matches && !c.pattern) {
-      p.value = '';
-      setLength(c.length ?? null);
-      setLetters(c.letters ?? '');
-    } else {
-      p.value = pattern;
+    p.value = pattern;
+    if (desk.matches) {
+      // Desktop has no pattern input, so a constraint lands in the controls that own each part.
+      // A positional pattern becomes its length and its known letters, since positions can't show.
+      const c = parsePattern(pattern);
+      const known = c.pattern ? [...new Set(c.pattern.replace(/\?/g, ''))].join('') : (c.letters ?? '');
+      setLength(length ?? c.length ?? null);
+      setLetters(known);
     }
     updateHint();
     if (submit) run();
