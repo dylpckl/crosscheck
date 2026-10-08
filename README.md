@@ -1,7 +1,9 @@
 # crosscheck
 
 Crosscheck: type a word or phrase, get candidate crossword answers as letter
-tiles plus what it means. Mobile-first PWA, no backend.
+tiles plus what it means. Installable PWA, no backend. Phones get a
+one-thumb layout; screens 1024px and wider get a two-column desktop layout
+(see SPEC §5b).
 
 - Spec: [`SPEC.md`](SPEC.md)
 - Data contract: [`src/contract.ts`](src/contract.ts)
@@ -34,5 +36,8 @@ test fails the deploy.
 
 ## Data sources
 
-Datamuse (answers), Free Dictionary API and Wiktionary (definitions),
-Wikipedia (summaries). All free, no keys, called directly from the browser.
+Answers come from a bundled clue bank built from the XD corpus
+([`docs/CLUEBANK.md`](docs/CLUEBANK.md)), a hand-written crosswordese corpus,
+and Datamuse. Datamuse also supplies one-line definitions for clue-bank
+answers that have none. Free Dictionary API and Wiktionary define the clue,
+and Wikipedia summarizes it. All free, no keys, called directly from the browser.

@@ -96,6 +96,18 @@ answer sources for short clues, merged with a lower weight.
 
 Limits: 100,000 requests/day without a key, no auth, CORS `*`.
 
+Definitions for clue-bank answers (`src/providers/glosses.ts`). Bank hits
+carry no gloss, so each published answer without one gets a lookup:
+
+```
+GET https://api.datamuse.com/words?sp={answer}&md=d&max=1
+```
+
+The first definition of the exact word becomes the `gloss`, its prefix the
+`partOfSpeech`. At most eight lookups per search, memoized for the session,
+started as soon as the bank has answered so they run alongside the main
+calls. A failed lookup leaves the row as tiles and never fails the solve.
+
 ### 3.2 Free Dictionary API → `Definition | null`
 
 ```
@@ -256,8 +268,9 @@ Behavior:
 
 - Submit on Enter and on input blur if text changed. Debounce 300ms on typing
   for a "live" feel only when online and the query is ≥ 3 chars.
-- Pattern field is hidden behind a chip until tapped, so the default screen
-  is truly one input. Typing a number alone in the pattern field means "length".
+- The pattern field is parked: hidden on phones while the idea is
+  reconsidered. The parser, ranking and highlighting behind it still work,
+  and desktop exposes the same constraints as a slider and letter tags (§5b).
 - Tap an answer tile row → copies the grid-form answer to clipboard and shows
   a toast. Long-press → sets it as the query (chain lookups).
 - Sections render independently as each provider resolves. Skeleton rows
@@ -268,6 +281,56 @@ Behavior:
   blue `#2B4C7E`, serif display, monospace tiles. Dark mode inverts cream/ink.
 - Respect `prefers-reduced-motion`. Min tap target 44px. `100dvh` layout so
   the iOS keyboard doesn't push content off-screen.
+
+---
+
+## 5b. UI spec (desktop, ≥ 1024px)
+
+One centered column, max 1080px. Same DOM as mobile, rearranged by CSS grid
+(`#out` is `display: contents` so its sections join the view's grid).
+
+```
+┌─────────────────────────────────┬───────────────────────┐
+│ CLUE                            │ MEANING               │
+│ tide            (serif, 44px)   │ ┌───────────────────┐ │
+│ ─────────────────────────────── │ │ dictionary entry  │ │
+│ LENGTH   Any length │ LETTERS   │ │ Wikipedia summary │ │
+│ ●───────────────    │ [N×][A×]  │ │ links             │ │
+│ Any 3 4 … 15        │           │ └───────────────────┘ │
+├─────────────────────┴───────────┴───────────────────────┤
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ [N][E][A][P]   n. The tide of least range…           │ │ ← top answer outlined
+│ └─────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ [E][B][B]      n. to flow back or recede             │ │
+│ └─────────────────────────────────────────────────────┘ │
+│ RECENT  (chips)                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+- **Length** is a slider: Any, 3–15. It is a standing constraint: it sets
+  `SolveRequest.length` (refetching, including mid-search) and filters
+  strictly, so a length with no answers shows none rather than every length.
+- **Letters you have** is a tag box: each letter typed becomes a tag,
+  Backspace removes the last. Letters are `SolveRequest.letters`: they
+  re-rank and highlight, never filter or refetch. Positional patterns have
+  no desktop control; one arriving from history or a link becomes its
+  length plus its known letters, and the hidden pattern input is never read.
+- **Search as you type** has its own setting (`liveSearchDesktop`), on by
+  default, debounced 250ms. Results already on screen stay until new ones
+  land. A typed search reaches history only after resting 2s on it.
+- **Meaning** is always open and holds its column from the start with a
+  fixed height (size containment); long entries scroll inside the card.
+- **Answers** are full-width cards, tiles beside their gloss, no length
+  number or section heading. Related words show only when nothing published
+  came back, and then take the published rows' place; the Google hand-off
+  sits below the list.
+- **Empty and loading** show a face-down board: blank meaning card and rows
+  of blank tiles. When results land the tiles turn over Wordle-style, row by
+  row. The first answers wait 250ms so the board turns in one wave; repaints
+  wait for a flip to finish; later answers turn over on their own.
+- No layout shift: the scrollbar gutter is reserved and the top row's height
+  never depends on the definition.
 
 ---
 
@@ -340,27 +403,46 @@ index.html
 vite.config.ts            # vite-plugin-pwa config lives here
 public/
   icons/192.png, 512.png, apple-touch-icon.png
+scripts/
+  build-cluebank.mjs      # XD corpus → src/data/cluebank.json (docs/CLUEBANK.md)
 src/
-  contract.ts             # ← the data model (already written)
-  main.ts                 # boot, read ?q=, wire input → solve → render
-  solve.ts                # orchestrator: parse, fan out, merge, cache
+  contract.ts             # the data model
+  main.ts                 # boot, read ?q=, wire shell, solver, sheet
+  solve.ts                # orchestrator: fan out, merge, gloss, cache
   pattern.ts              # parser + matcher (pure, unit-tested)
+  rank.ts                 # merge + order answers
+  clue-norm.ts            # clue normalization shared with the bank script
+  http.ts                 # fetch with timeout + error mapping
+  store.ts                # localStorage history, result cache, settings
+  data/
+    cluebank.json         # generated clue bank
+    crosswordese.ts       # hand-written conventional fill
   providers/
+    cluebank.ts           # exact clue lookup (lazy chunk)
+    crosswordese.ts
     datamuse.ts
+    glosses.ts            # definitions for bank answers
     dictionaryapi.ts
     wiktionary.ts
     wikipedia.ts
     links.ts
-  store.ts                # localStorage history + result cache
   render/
-    answers.ts            # letter tiles
-    definition.ts
-    reference.ts
+    answers.ts            # letter tiles, blank board
+    meaning.ts            # dictionary + reference + links, blank card
     history.ts
+    empty.ts
+    links.ts
+  ui/
+    shell.ts              # app bar, sheet, toast
+    solver.ts             # inputs, desktop controls, flip, paint
+    sheet.ts              # settings + about
+    diagnostics.ts        # "Check data sources"
+    layout.ts             # the desktop breakpoint
   styles.css
 test/
-  pattern.test.ts
+  *.test.ts               # parser, ranking, links, orchestrator
   providers/*.test.ts     # mapper tests against fixtures/
+  render/*.test.ts
   fixtures/*.json         # captured real responses
 ```
 
@@ -381,9 +463,9 @@ test/
 
 ## 9. Open questions (non-blocking, defaults chosen)
 
-- **Live-as-you-type vs submit only.** Default: submit only, with a debounced
-  live mode as a later toggle. Live mode burns Datamuse quota fast on a
-  shared deployment.
+- **Live-as-you-type vs submit only.** Resolved per layout: off by default on
+  phones (a toggle), on by default on desktop (its own toggle). Live mode
+  still costs Datamuse quota on every pause.
 - **Answer count.** Default cap 24; the prototype showed ~8. Tune after use.
 - **Proper-noun answers.** Datamuse tags them `prop`. Default: keep them,
   since crosswords love them, but sort slightly lower than common words.
