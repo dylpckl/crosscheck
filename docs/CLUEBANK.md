@@ -1,11 +1,11 @@
 # The clue bank
 
-Crosscheck answers a clue from three sources. Two of them ship in this repo;
-this document is about the third, which does not, and how to fill it in.
+Crosscheck answers a clue from three sources. This document is about the
+clue bank: where its data comes from and how to regenerate it.
 
 | Source | Knows | Ships here |
 | --- | --- | --- |
-| Clue bank | What published puzzles have used for this **exact** clue | No — you generate it |
+| Clue bank | What published puzzles have used for this **exact** clue | Yes, generated from the XD corpus into `src/data/cluebank.json` |
 | Crosswordese corpus | Convention for short recurring fill: "old coin" wants SOU | Yes, ~296 entries, hand-written |
 | Datamuse | Semantic association across the whole language | No — live API |
 
@@ -74,6 +74,11 @@ service worker caches the chunk, so it works offline from then on.
 Lookup is **exact** on the normalized clue — see `src/clue-norm.ts`, which
 both the build script and the runtime import so their keys cannot drift.
 "False god", "FALSE GOD" and "False god (4)" all reduce to `false god`.
+
+Bank entries carry no definition. For published answers that have none,
+`src/providers/glosses.ts` looks one up from Datamuse (`sp=<word>&md=d`)
+alongside the main Datamuse call: at most eight per search, memoized for the
+session. A failed lookup only leaves that row as tiles.
 
 Exactness is the point. A bank hit means a real puzzle used this clue for
 this answer, which is stronger evidence than anything else the app has, so
