@@ -470,8 +470,15 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   #sec-answers, .empty-state { grid-area: answers; }
   #sec-answers { border-top: 0; padding-top: 0; margin: 0; }
   #sec-answers > h2, #sec-answers .lenrow, .len { display: none; }
-  /* Related words only stand in when nothing published came back. */
-  .answers.published ~ .subhead, .answers.published ~ .subhead + .answers { display: none; }
+  /*
+   * Related words only stand in when nothing published came back, and then
+   * take the published rows' place, unlabelled, so the board starts at the
+   * same spot either way. The Google hand-off follows the list instead of
+   * pushing it down.
+   */
+  #sec-answers { display: flex; flex-direction: column; }
+  #sec-answers .subhead, .answers.published ~ .subhead + .answers { display: none; }
+  #sec-answers .handoff { order: 1; padding: 18px 0 0; }
   .answers { gap: 8px; }
   .row {
     grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; align-items: center;
