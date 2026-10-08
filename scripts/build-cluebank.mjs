@@ -28,10 +28,20 @@ const flag = (name, fallback) => {
   const i = argv.indexOf(`--${name}`);
   return i === -1 ? fallback : Number(argv[i + 1]);
 };
-/** Clues to keep, most frequently published first. Tune against the reported size. */
-const MAX_CLUES = flag('max-clues', 30000);
-/** Answers per clue. Beyond a handful they are historical curiosities, not candidates. */
-const MAX_ANSWERS = flag('max-answers', 6);
+/**
+ * Clues to keep, most frequently published first. 30,000 turned out to cut
+ * in the middle of perfectly good clues — rank 30,000 was "end of a prayer"
+ * → AMEN — and missed "man of steel". The bank earns its keep in the long
+ * tail, which is where Datamuse fails, so the default is generous; tune
+ * against the size the script reports.
+ */
+const MAX_CLUES = flag('max-clues', 100000);
+/**
+ * Answers per clue. Three covers the real candidates; the fourth onward are
+ * historical curiosities, and dropping them buys a third more clues at the
+ * same size.
+ */
+const MAX_ANSWERS = flag('max-answers', 3);
 /** Answers this short are usually dataset noise rather than fill. */
 const MIN_LEN = flag('min-len', 3);
 const MAX_LEN = flag('max-len', 24);
@@ -91,6 +101,14 @@ for (const row of iter) {
   const clue = normalizeClue(row[clueCol] ?? '');
   const answer = (row[answerCol] ?? '').toUpperCase().replace(/[^A-Z]/g, '');
   if (!clue || answer.length < MIN_LEN || answer.length > MAX_LEN) continue;
+  // "XXX" is the corpus's placeholder for an answer it never captured, and it
+  // leaks into the top three for real clues: "lanka" → SRI, XXX.
+  if (/^X+$/.test(answer)) continue;
+  // A clue with no letters — "17", "0" — is a dataset artifact (a cross-
+  // reference or a fill-in-the-blank fragment), not something anyone types.
+  // Left in, they outrank every real clue: "1" was the second most
+  // published "clue" in the corpus.
+  if (!/[a-z]/.test(clue)) continue;
   kept++;
   let byAnswer = counts.get(clue);
   if (!byAnswer) counts.set(clue, (byAnswer = new Map()));
@@ -107,6 +125,14 @@ const ranked = [...counts.entries()]
     return { clue, byAnswer, total };
   })
   .sort((a, b) => b.total - a.total || a.clue.length - b.clue.length);
+
+// Show the shape of the tail before cutting it, so --max-clues is a choice
+// rather than a guess: how many clues have been published at least N times.
+console.log('\nclues published at least N times:');
+for (const n of [1, 2, 3, 5, 10, 25]) {
+  const count = ranked.filter((r) => r.total >= n).length;
+  console.log(`  >= ${String(n).padStart(2)}: ${count.toLocaleString().padStart(9)}`);
+}
 
 const bank = {};
 for (const { clue, byAnswer } of ranked.slice(0, MAX_CLUES)) {

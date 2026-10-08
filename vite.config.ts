@@ -23,7 +23,7 @@ export default defineConfig({
   test: { environment: 'jsdom' },
   plugins: [
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['icons/apple-touch-icon.png', 'icons/favicon.svg'],
       manifest: {
         name: 'Crosscheck',

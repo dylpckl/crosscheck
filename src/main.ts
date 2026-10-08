@@ -36,10 +36,18 @@ const params = new URLSearchParams(location.search);
 const q = params.get('q') ?? params.get('text');
 if (q) solver.setQuery(q, params.get('p') ?? '', true);
 
-// Service worker with an explicit update prompt (never reload mid-typing).
-const updateSW = registerSW({
-  onNeedRefresh() {
-    shell.toast('Update available', { label: 'Reload', onClick: () => updateSW(true) });
+// The service worker updates itself: a new build activates in the background
+// and the page reloads to pick it up. The old "Update available" toast was
+// easy to miss, and missing it meant running a stale version without knowing.
+// The one thing kept from that design is never reloading mid-search — if the
+// input has text or focus, the reload waits until the tab is next hidden,
+// which on a phone is the moment you switch to the puzzle anyway.
+registerSW({
+  onNeedReload() {
+    const q = document.getElementById('q') as HTMLInputElement | null;
+    const quiet = () => !q?.value && document.activeElement !== q;
+    if (quiet()) { location.reload(); return; }
+    document.addEventListener('visibilitychange', () => { if (document.hidden) location.reload(); }, { once: true });
   },
   onOfflineReady() {
     shell.toast('Ready to work offline');

@@ -49,14 +49,18 @@ or comma delimiters work. Options, all optional:
 
 | Flag | Default | What it does |
 | --- | --- | --- |
-| `--max-clues` | 30000 | How many clues to keep, most frequently published first |
-| `--max-answers` | 6 | Answers kept per clue |
+| `--max-clues` | 100000 | How many clues to keep, most frequently published first |
+| `--max-answers` | 3 | Answers kept per clue |
 | `--min-len` / `--max-len` | 3 / 24 | Answer lengths to accept |
 
-The script reports the resulting file size; tune `--max-clues` against it.
-Everything a visitor downloads, they download once and keep, but it is still
-worth keeping honest — 30,000 clues lands in the low hundreds of KB, and
-gzips to roughly a third of that.
+The script prints how many clues have been published at least 1, 2, 3, 5,
+10 and 25 times, then the resulting file size, so `--max-clues` is a choice
+rather than a guess. The bank earns its keep in the long tail — the specific
+phrase clues Datamuse cannot do — so err generous: 30,000 turned out to cut
+mid-quality and miss "man of steel". Everything a visitor downloads, they
+download once and keep; 100,000 clues at three answers each gzips to
+roughly 2 MB. Clues with no letters in them ("17", "0") are dropped — they
+are dataset artifacts, and they had been outranking every real clue.
 
 Output is `src/data/cluebank.json`. Nothing else changes: the app already
 imports it, so `npm test && npm run build` is the whole of the rest.
