@@ -235,6 +235,8 @@ export interface HistoryEntry {
   query: string;
   pattern?: string;
   letters?: string;
+  /** Exact length chosen on the desktop slider, when there was no pattern. */
+  length?: number;
   /** Epoch ms of the most recent solve for this query+pattern. */
   at: number;
   /** Top answer at the time, for the history row preview. */

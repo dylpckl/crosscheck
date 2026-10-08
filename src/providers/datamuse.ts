@@ -10,7 +10,7 @@ export interface DatamuseWord {
   defs?: string[];
 }
 
-const BASE = 'https://api.datamuse.com/words';
+export const BASE = 'https://api.datamuse.com/words';
 /** Datamuse mixes internal markers (f:1.2, results_type:…) into tags; only these are parts of speech. */
 const POS_TAGS = new Set(['n', 'v', 'adj', 'adv', 'prop', 'u']);
 /**
@@ -22,6 +22,15 @@ const POS_TAGS = new Set(['n', 'v', 'adj', 'adv', 'prop', 'u']);
  */
 const BACKFILL = /^results_type:backfill/;
 export const NAME = 'Datamuse';
+
+/** A Datamuse definition is "pos\ttext"; split it into its parts. */
+export function parseDef(def?: string): { pos?: string; text?: string } {
+  if (!def) return {};
+  const tab = def.indexOf('\t');
+  const text = (tab < 0 ? def : def.slice(tab + 1)).trim();
+  const pos = tab < 0 ? '' : def.slice(0, tab).trim();
+  return { pos: pos || undefined, text: text || undefined };
+}
 
 export function buildUrls(req: SolveRequest): string[] {
   const ml = encodeURIComponent(req.query);
@@ -41,7 +50,7 @@ export function mapAnswers(rows: DatamuseWord[], req: SolveRequest): Answer[] {
     const answer = toGrid(r.word);
     if (!answer) continue;
     const tags = (r.tags ?? []).filter((t) => POS_TAGS.has(t));
-    const def = r.defs?.[0]?.split('\t').pop()?.trim();
+    const def = parseDef(r.defs?.[0]).text;
     const candidate: Answer = {
       answer,
       display: r.word,

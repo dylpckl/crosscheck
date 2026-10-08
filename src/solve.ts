@@ -5,6 +5,7 @@ import { findPublished } from './providers/cluebank';
 import { findClued } from './providers/crosswordese';
 import { datamuse } from './providers/datamuse';
 import { dictionaryapi } from './providers/dictionaryapi';
+import { applyGlosses, findGlosses } from './providers/glosses';
 import { buildLinks } from './providers/links';
 import { wikipedia } from './providers/wikipedia';
 import { wiktionary } from './providers/wiktionary';
@@ -85,6 +86,10 @@ async function fetchAnswers(
   const published = await findPublished(req);
   if (published.length) on.answers?.(capAnswers(rankAnswers(mergeAnswers([...published, ...local]), req)));
 
+  // The published answers are known now, so their definitions are looked up
+  // alongside Datamuse instead of after it.
+  const glosses = findGlosses(mergeAnswers([...published, ...local]), signal);
+
   let remote: Answer[] = [];
   try {
     remote = await datamuse.fetch(req, signal);
@@ -93,7 +98,11 @@ async function fetchAnswers(
   }
   const merged = capAnswers(rankAnswers(mergeAnswers([...published, ...local, ...remote]), req));
   on.answers?.(merged);
-  return merged;
+
+  // Datamuse often defines these words itself; looked-up glosses only fill what is still missing.
+  const glossed = applyGlosses(merged, await glosses);
+  if (glossed !== merged) on.answers?.(glossed);
+  return glossed;
 }
 
 export async function solve(req: SolveRequest, signal: AbortSignal, on: SolveEvents): Promise<SolveResult> {

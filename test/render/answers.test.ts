@@ -45,6 +45,13 @@ describe('length chips', () => {
     expect(html).not.toContain('data-len="4" aria-pressed="true"');
   });
 
+  it('with strictLength, a length nothing matches shows no answers instead of every length', () => {
+    const html = renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 9, strictLength: true });
+    expect(html).not.toContain('data-answer=');
+    expect(html).toContain('class="handoff"');
+    expect(html).toContain('9 letters');
+  });
+
   it('hides the row when every answer is the same length', () => {
     expect(renderAnswers([make('seer'), make('ezra')], { query: 'x' })).not.toContain('class="lens"');
   });

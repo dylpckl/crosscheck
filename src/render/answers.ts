@@ -8,6 +8,19 @@ export function skeletonAnswers(): string {
   </section>`;
 }
 
+/** Lengths of the blank rows on the empty desktop board: a few plausible shapes of fill. */
+const BLANK_ROWS = [4, 5, 3, 6];
+
+/**
+ * The desktop board before there is anything on it: answer rows with their
+ * tiles face down. Results turn them over (see AnswersOpts.flip).
+ */
+export function renderBlankAnswers(): string {
+  return `<section class="section blankrows" id="sec-answers" aria-hidden="true"><div class="answers">${BLANK_ROWS.map(
+    (n) => `<div class="row"><span class="tiles">${'<span class="tile"></span>'.repeat(n)}</span><span class="gloss"><i class="bar"></i></span></div>`,
+  ).join('')}</div></section>`;
+}
+
 export interface AnswersOpts {
   fromCache?: boolean;
   error?: ProviderError;
@@ -22,6 +35,13 @@ export interface AnswersOpts {
    * (no answers at all) renders as normal — a hand-off is not a spoiler.
    */
   hidden?: boolean;
+  /**
+   * Apply lengthFilter even when no answer has that length. The desktop
+   * slider is a constraint the reader set, so an empty result is the honest
+   * answer; the mobile chips are picked from lengths present, so they never
+   * need it.
+   */
+  strictLength?: boolean;
 }
 
 /** Lengths present in the answers, ascending, with how many of each. */
@@ -41,7 +61,7 @@ const isPublished = (a: Answer) => (a.priority ?? 0) >= 1;
 export function renderAnswers(answers: Answer[], req: SolveRequest, opts: AnswersOpts = {}): string {
   const counts = lengthCounts(answers);
   // Ignore a filter nothing matches, so a stale selection can't empty the list.
-  const active = counts.some(([n]) => n === opts.lengthFilter) ? opts.lengthFilter! : null;
+  const active = opts.strictLength || counts.some(([n]) => n === opts.lengthFilter) ? opts.lengthFilter ?? null : null;
   const filtered = active ? answers.filter((a) => a.length === active) : answers;
   const published = filtered.filter(isPublished);
   const related = filtered.filter((a) => !isPublished(a));
@@ -69,11 +89,11 @@ export function renderAnswers(answers: Answer[], req: SolveRequest, opts: Answer
 
   const error = opts.error && !answers.length ? `<div class="notice bad">${esc(opts.error.message)}.</div>` : '';
   const main = published.length
-    ? `<div class="answers">${published.map((a) => row(a, req)).join('')}</div>`
+    ? `<div class="answers published">${published.map((a, i) => row(a, req, i)).join('')}</div>`
     : handoff(req.query, active);
   const rest = related.length
     ? `<h3 class="subhead">Related words <span class="count">${related.length}</span></h3>
-       <div class="answers">${related.map((a) => row(a, req)).join('')}</div>`
+       <div class="answers">${related.map((a, i) => row(a, req, published.length + i)).join('')}</div>`
     : '';
   return `<section class="section" id="sec-answers">${head}${chips}${error}${main}${rest}</section>`;
 }
@@ -101,7 +121,7 @@ function countLabel(answers: Answer[], req: SolveRequest): string {
   return String(answers.length);
 }
 
-function row(a: Answer, req: SolveRequest): string {
+function row(a: Answer, req: SolveRequest, ri = 0): string {
   const words = a.display.split(/\s+/);
   let idx = 0;
   const tiles = words
@@ -113,14 +133,14 @@ function row(a: Answer, req: SolveRequest): string {
         .map((ch) => {
           const hit = req.pattern ? req.pattern[idx] === ch : Boolean(req.letters?.includes(ch));
           idx++;
-          return `<span class="tile${hit ? ' hit' : ''}">${ch}</span>`;
+          return `<span class="tile${hit ? ' hit' : ''}" style="--i:${idx - 1}">${ch}</span>`;
         })
         .join('');
       return letters + (wi < words.length - 1 ? '<span class="gap"></span>' : '');
     })
     .join('');
   const pos = a.partOfSpeech?.[0];
-  return `<button class="row${a.fitsPattern === false ? ' dim' : ''}" style="view-transition-name:a-${a.answer}" data-answer="${a.answer}" data-display="${esc(a.display)}"
+  return `<button class="row${a.fitsPattern === false ? ' dim' : ''}" style="view-transition-name:a-${a.answer};--r:${ri}" data-answer="${a.answer}" data-display="${esc(a.display)}"
       aria-label="${esc(a.display)}, ${a.length} letters. Tap to copy, hold to look up.">
     <span class="tiles${a.length >= 9 ? ' long' : ''}">${tiles}<span class="len">${a.length}</span></span>
     ${a.gloss ? `<span class="gloss">${pos ? `<span class="pos">${esc(pos)}.</span>` : ''}${esc(a.gloss)}</span>` : ''}
