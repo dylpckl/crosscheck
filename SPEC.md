@@ -7,7 +7,6 @@ no backend required for v1.
 Companion files:
 
 - `src/contract.ts` — the data model contract. Read that first.
-- `docs/HANDOFF.md` — the original prototype handoff this spec builds on.
 
 ---
 
@@ -15,18 +14,12 @@ Companion files:
 
 | Question | Decision | Why |
 |---|---|---|
-| Backend? | **None for v1.** All calls go browser → public API. | Every API below sends `Access-Control-Allow-Origin: *`. Zero hosting cost, zero secrets, works as a static site on GitHub Pages / Netlify / Cloudflare Pages. |
+| Backend? | **None for v1.** All calls go browser → public API. | Every API below sends `Access-Control-Allow-Origin: *`. Zero hosting cost, zero secrets, works as a static site on any host (deployed on Vercel). |
 | Answer engine | **Datamuse** (`ml=` means-like + `sp=` spelled-like) | Free, no key, 100k req/day, pattern-aware server-side, returns definitions and part-of-speech in the same call. |
 | Definition | **Free Dictionary API** first, **Wiktionary REST** fallback | dictionaryapi.dev is richest for single words (phonetics, audio, examples). Wiktionary handles phrases and rarer words. |
 | "Web search" | **Wikipedia REST summary** + outbound search links | There is no free, CORS-enabled web search JSON API. Wikipedia's summary endpoint covers proper nouns and phrases well. Real search is a tap-out link (Google / DuckDuckGo / Wordplays). |
-| Claude API | **Phase 2, optional.** Proxy at `POST /api/solve`. | Adds reasoning for cryptic clues. Needs a server-held key, so it's an add-on, not the base. Contract already defined (`ProxySolveResponse`). |
 | Framework | **None.** Vite + vanilla TypeScript. | App is one screen. Vite gives TS, hashed assets, and `vite-plugin-pwa` for a correct service worker. No React/Preact. |
 | Persistence | `localStorage` for history and result cache | Small, synchronous, good enough. Swap to IndexedDB only if cache size becomes a problem. |
-
-> **Unverified from this sandbox:** the CORS claims above are from each API's
-> documentation and prior use, not a live check (the dev container's egress
-> policy blocks all of these hosts). First task after scaffolding is a
-> 5-line smoke test page that fetches each endpoint from a deployed origin.
 
 ---
 
@@ -175,29 +168,9 @@ search" affordance; the Wikipedia card is the inline preview.
 - **DuckDuckGo Instant Answer API** — no CORS headers on `api.duckduckgo.com`.
 - **Google Custom Search / Bing / Brave Search** — need keys, would leak client-side.
 - **Crossword-specific clue databases** (XWord Info, Crossword Tracker, xd corpus) —
-  no public CORS APIs; the xd clue corpus is a possible phase-3 server-side index.
+  no public CORS APIs. The xd corpus now ships as a bundled clue bank instead
+  (see `docs/CLUEBANK.md`).
 - **Merriam-Webster / Oxford** — keys required.
-
-### 3.7 Phase 2: Claude proxy (optional)
-
-Single serverless function (Cloudflare Worker or Vercel edge function):
-
-```
-POST /api/solve
-body:     SolveRequest              (see contract)
-response: ProxySolveResponse        { answers: [{display, gloss, score}], meta? }
-```
-
-Server holds `ANTHROPIC_API_KEY`, uses the official TypeScript SDK, model
-`claude-opus-5` with `output_config.effort: "low"` and structured output
-(`output_config.format`) so the response is schema-valid JSON without parsing
-prose. The prompt lives server-side. Client merges the answers with
-`source: 'claude'` and shows them in a separate "Reasoned" group under the
-Datamuse tiles. Behind a settings toggle, off by default, so the app stays
-free-to-run for anyone who deploys it as static.
-
-Rate-limit the function per IP (Cloudflare has this built in) and cap
-`max_tokens` at ~1000 since the response is a small JSON list.
 
 ---
 
@@ -395,7 +368,7 @@ test/
 
 ## 8. Milestones
 
-1. **Scaffold + smoke test.** Vite project, deploy to Pages, one page that
+1. **Scaffold + smoke test.** Vite project, deploy it, one page that
    fetches each of the four endpoints and prints status + CORS result.
    This validates the "no backend" decision before anything else is built.
 2. **Pattern parser + Datamuse adapter + tiles.** The core loop. Ship it.
@@ -403,7 +376,6 @@ test/
 4. **Cache, history, offline states.**
 5. **PWA polish:** manifest, icons, SW strategies, update prompt, share target,
    iOS install hint. Lighthouse PWA + a11y ≥ 95.
-6. **Phase 2 (optional):** Claude proxy behind a settings toggle.
 
 ---
 
