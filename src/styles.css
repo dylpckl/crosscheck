@@ -447,12 +447,24 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   .tagbox input { flex: 1; min-width: 90px; height: 40px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
   .tagbox input::placeholder { color: var(--ink-3); }
 
-  /* Meaning: its own column, always open, no disclosure. */
-  #sec-meaning { grid-area: meaning; margin: 0; }
+  /*
+   * Meaning: its own column, always open, no disclosure. Size containment
+   * keeps it out of the row's height, so the top row is sized by the clue
+   * column and a minimum, never by the definition: nothing below moves when
+   * one lands. Long entries scroll inside the card.
+   */
+  #view-solver { grid-template-rows: minmax(360px, auto) auto auto; }
+  #sec-meaning { grid-area: meaning; margin: 0; contain: size; align-self: stretch; display: flex; flex-direction: column; }
+  #sec-meaning > h2 { flex: none; }
   .meaning .disclosure { pointer-events: none; }
   .meaning .disclosure .chev, .meaning .peekwrap { display: none; }
-  .meaning .bodywrap { grid-template-rows: 1fr; opacity: 1; }
-  .meaning .panel { padding: 20px 22px; border-radius: 16px; }
+  .meaning .bodywrap { flex: 1; min-height: 0; grid-template-rows: 1fr; opacity: 1; }
+  .meaning .bodywrap > .inner { height: 100%; }
+  .meaning .panel { height: 100%; box-sizing: border-box; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; padding: 20px 22px; border-radius: 16px; }
+  .blankmeaning .bar { display: block; height: 12px; border-radius: 6px; background: var(--rule-2); margin-bottom: 16px; }
+  .blankmeaning .bar.w40 { width: 40%; height: 20px; margin-bottom: 22px; }
+  .blankmeaning .bar.w80 { width: 80%; }
+  .blankmeaning .bar.w60 { width: 60%; }
 
   /* Answers: full-width cards, tiles beside their gloss, the top answer set apart. */
   #sec-answers, .empty-state { grid-area: answers; }

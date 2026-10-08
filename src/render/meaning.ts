@@ -10,6 +10,15 @@ export function skeletonMeaning(): string {
   return `<section class="section meaning" id="sec-meaning"><h2>Meaning</h2><div class="sk short"></div></section>`;
 }
 
+/**
+ * Desktop: Meaning holds its column from the start, so nothing shifts when a
+ * definition lands. Until then the card is blank, matching the face-down board.
+ */
+export function renderBlankMeaning(): string {
+  return `<section class="section meaning open blankmeaning" id="sec-meaning" aria-hidden="true"><h2>Meaning</h2>
+    <div class="bodywrap"><div class="inner"><div class="panel"><i class="bar w40"></i><i class="bar"></i><i class="bar w80"></i><i class="bar w60"></i></div></div></div></section>`;
+}
+
 export interface MeaningOpts {
   /** Expanded shows the cards; collapsed shows one line you can tap open. */
   open?: boolean;

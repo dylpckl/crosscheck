@@ -3,7 +3,7 @@ import { parsePattern } from '../pattern';
 import { renderAnswers, renderBlankAnswers, skeletonAnswers } from '../render/answers';
 import { renderEmpty } from '../render/empty';
 import { renderHistory } from '../render/history';
-import { renderMeaning, skeletonMeaning } from '../render/meaning';
+import { renderBlankMeaning, renderMeaning, skeletonMeaning } from '../render/meaning';
 import { esc } from '../render/util';
 import { rankAnswers } from '../rank';
 import { buildRequest, isBuildError, solve } from '../solve';
@@ -155,7 +155,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     // be found. Spoiler mode builds on the same order.
     const body = sections.meaning + sections.answers;
     if (!body && desk.matches) flipNext = true;
-    out.innerHTML = body || (desk.matches ? renderBlankAnswers() : renderEmpty(getHistory().length === 0));
+    out.innerHTML = body || (desk.matches ? renderBlankMeaning() + renderBlankAnswers() : renderEmpty(getHistory().length === 0));
   }
   /**
    * Swap one section in place. Rebuilding the whole of `out` for a change to
@@ -356,7 +356,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     live = null;
     meaningOpen = false;
     if (!keep) {
-      sections.meaning = skeletonMeaning();
+      sections.meaning = desk.matches ? renderBlankMeaning() : skeletonMeaning();
       sections.answers = desk.matches ? renderBlankAnswers() : skeletonAnswers();
       flipNext = desk.matches;
       paint();
