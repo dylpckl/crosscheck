@@ -1,6 +1,6 @@
 import type { Answer, SolveResult, SolveRequest } from '../contract';
 import { parsePattern } from '../pattern';
-import { renderAnswers, skeletonAnswers } from '../render/answers';
+import { renderAnswers, renderBlankAnswers, skeletonAnswers } from '../render/answers';
 import { renderEmpty } from '../render/empty';
 import { renderHistory } from '../render/history';
 import { renderMeaning, skeletonMeaning } from '../render/meaning';
@@ -142,12 +142,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   /** Spoiler mode: whether this search's answers have been tapped open. */
   let revealed = false;
 
+  /**
+   * Desktop shows the board face down while there is nothing on it, and the
+   * first answers to land turn its tiles over. Set whenever the blank board
+   * goes up; cleared once a result has flipped in.
+   */
+  let flipNext = false;
+
   function paint() {
     // Meaning first: collapsed, it is one line, so answers still start at the
     // top of the screen — and it never has to be scrolled past a long list to
     // be found. Spoiler mode builds on the same order.
     const body = sections.meaning + sections.answers;
-    out.innerHTML = body || renderEmpty(getHistory().length === 0);
+    if (!body && desk.matches) flipNext = true;
+    out.innerHTML = body || (desk.matches ? renderBlankAnswers() : renderEmpty(getHistory().length === 0));
   }
   /**
    * Swap one section in place. Rebuilding the whole of `out` for a change to
@@ -159,7 +167,42 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     if (el) el.outerHTML = html;
     else paint();
   }
-  const paintAnswers = () => paintSection('#sec-answers', sections.answers);
+  /**
+   * Turning the board over. The local corpus, the clue bank and Datamuse land
+   * a beat apart, so the first answers of a search wait GATHER_MS for the
+   * rest to catch up and turn over in one wave. Repaints during a flip wait
+   * for it to finish, since rebuilding the tiles mid-turn would restart them;
+   * answers that arrive later turn over on their own, rows already face up
+   * stay put.
+   */
+  const GATHER_MS = 250;
+  const FLIP_MS = 1300;
+  let flipStarted = false;
+  /** This search started from the blank board, so its answers turn over as they arrive. */
+  let flipSearch = false;
+  let flipUntil = 0;
+  let flipTimer: number | undefined;
+  function paintAnswers() {
+    if (flipStarted) {
+      flipStarted = false;
+      flipUntil = Date.now() + GATHER_MS;
+    }
+    const wait = flipUntil - Date.now();
+    if (wait > 0) {
+      clearTimeout(flipTimer);
+      flipTimer = window.setTimeout(paintAnswers, wait);
+      return;
+    }
+    const before = new Set([...out.querySelectorAll<HTMLElement>('#sec-answers .row[data-answer]')].map((r) => r.dataset.answer));
+    paintSection('#sec-answers', sections.answers);
+    if (!flipSearch) return;
+    const sec = out.querySelector('#sec-answers');
+    const rows = [...(sec?.querySelectorAll<HTMLElement>('.row[data-answer]') ?? [])];
+    if (!sec || !rows.some((r) => !before.has(r.dataset.answer))) return;
+    sec.classList.add('flip');
+    rows.forEach((r) => r.classList.toggle('shown', before.has(r.dataset.answer)));
+    flipUntil = Date.now() + FLIP_MS;
+  }
   const paintMeaningSection = () => paintSection('#sec-meaning', sections.meaning);
   /** Re-render every section, in place. */
   function repaintAll() {
@@ -176,6 +219,13 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     if (lengthFilter !== null && !answers.some((a) => a.length === lengthFilter)) lengthFilter = null;
     return lengthFilter;
   }
+  /** Whether this render should turn the tiles over; true once per blank board. */
+  function takeFlip(): boolean {
+    const f = flipNext;
+    flipNext = false;
+    if (f) flipStarted = flipSearch = true;
+    return f;
+  }
   /** Renders from the finished result when there is one, the partial otherwise. */
   function renderAnswersSection() {
     const hidden = getSettings().hideAnswers && !revealed;
@@ -186,9 +236,10 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
         error: r.errors.find((e) => e.provider === 'Datamuse'),
         lengthFilter: keepLengthFilter(r.answers),
         hidden,
+        flip: takeFlip(),
       });
     } else if (live) {
-      sections.answers = renderAnswers(live.answers, live.req, { lengthFilter: keepLengthFilter(live.answers), hidden });
+      sections.answers = renderAnswers(live.answers, live.req, { lengthFilter: keepLengthFilter(live.answers), hidden, flip: takeFlip() });
     }
   }
   function renderSections() {
@@ -221,6 +272,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     ctl = null;
     clearTimeout(liveTimer);
     clearTimeout(historyTimer);
+    clearTimeout(flipTimer);
+    flipUntil = 0;
+    flipSearch = false;
     current = null;
     live = null;
     lengthFilter = deskLength;
@@ -297,12 +351,14 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     // Typing over results already on screen keeps them until the new ones
     // land, rather than flashing skeletons on every pause.
     const keep = fromTyping && Boolean(current || live);
+    flipSearch = false;
     current = null;
     live = null;
     meaningOpen = false;
     if (!keep) {
       sections.meaning = skeletonMeaning();
-      sections.answers = skeletonAnswers();
+      sections.answers = desk.matches ? renderBlankAnswers() : skeletonAnswers();
+      flipNext = desk.matches;
       paint();
     }
 
@@ -430,6 +486,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       onConstraintInput();
     }
     applySettings();
+    if (!current && !live) paint();
   });
   clearBtn.addEventListener('click', () => {
     q.value = '';

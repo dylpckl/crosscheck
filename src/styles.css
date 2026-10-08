@@ -477,6 +477,28 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   .tiles.long .tile { width: 36px; height: 40px; font-size: 19px; border-radius: 4px; }
   .gloss { font-size: 16px; color: var(--ink); }
 
+  /*
+   * The empty board: rows of face-down tiles. When results land, each tile
+   * turns over on its horizontal axis, Wordle-style, left to right and row by
+   * row; it shows its face-down colour until the half-turn hides it.
+   */
+  .blankrows .row { cursor: default; }
+  .blankrows .row:hover { background: transparent; }
+  .blankrows .tile, .flip .tile { --face-down: var(--chrome); }
+  .blankrows .tile { background: var(--face-down); border: 1px solid var(--rule); }
+  .blankrows .bar { display: block; width: 55%; height: 12px; border-radius: 6px; background: var(--rule-2); }
+  .flip .tile { animation: turn .5s ease-in-out both; animation-delay: calc(min(var(--r, 0), 6) * 140ms + var(--i, 0) * 70ms); }
+  .flip .gloss { animation: fadein .3s ease both; animation-delay: calc(min(var(--r, 0), 6) * 140ms + 350ms); }
+  .flip .row.shown .tile, .flip .row.shown .gloss { animation: none; }
+  @keyframes turn {
+    0% { transform: rotateX(0); background: var(--face-down); color: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
+    49.9% { transform: rotateX(90deg); background: var(--face-down); color: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
+    50% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .flip .tile, .flip .gloss { animation: none; } }
+
   #recent { grid-area: recent; }
   .recent { flex-wrap: wrap; overflow: visible; padding: 0; margin: 0; }
 }
