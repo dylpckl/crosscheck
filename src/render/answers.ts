@@ -69,7 +69,7 @@ export function renderAnswers(answers: Answer[], req: SolveRequest, opts: Answer
 
   const error = opts.error && !answers.length ? `<div class="notice bad">${esc(opts.error.message)}.</div>` : '';
   const main = published.length
-    ? `<div class="answers">${published.map((a) => row(a, req)).join('')}</div>`
+    ? `<div class="answers published">${published.map((a) => row(a, req)).join('')}</div>`
     : handoff(req.query, active);
   const rest = related.length
     ? `<h3 class="subhead">Related words <span class="count">${related.length}</span></h3>

@@ -396,3 +396,87 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 .about-page dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
 .about-page dt { color: var(--ink-3); }
 .about-page dd { margin: 0; }
+
+/* ---------- desktop ---------- */
+/*
+ * Wide screens get one centered column: the clue and its constraints on the
+ * left with Meaning beside them, answers full width underneath. #out is
+ * flattened with display: contents so its sections join the view's grid.
+ */
+.desk-only, .desk-controls { display: none; }
+@media (min-width: 1024px) {
+  #app { max-width: none; }
+  .appbar { padding-left: 24px; padding-right: 24px; }
+  .view { width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: 44px 32px 48px; }
+  #view-solver {
+    display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-areas: "search meaning" "answers answers" "recent recent";
+    gap: 36px 48px; align-items: start; align-content: start;
+  }
+  #out { display: contents; }
+  .mobile-only { display: none; }
+
+  .ctl-label { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .desk-only { display: block; margin-bottom: 8px; }
+
+  .searchbar { grid-area: search; position: static; margin: 0; padding: 0; background: none; box-shadow: none; display: flex; flex-direction: column; gap: 26px; }
+  .field { background: transparent; border: 0; border-bottom: 2px solid var(--dim); border-radius: 0; padding: 0; height: auto; }
+  .field:focus-within { border-color: var(--blue); box-shadow: none; }
+  .field input { font: italic 400 44px/1.25 Georgia, "Times New Roman", serif; padding: 4px 0 10px; height: auto; }
+  .field input::placeholder { color: var(--dim); }
+  .go { display: none; }
+
+  .desk-controls { display: flex; flex-wrap: wrap; gap: 24px 32px; }
+  .lenctl, .letctl { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
+  #len { width: 100%; height: 44px; margin: 0; accent-color: var(--blue); }
+  .ticks { display: flex; justify-content: space-between; margin-top: -6px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .ticks .on { color: var(--blue); font-weight: 700; }
+  .tagbox {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px;
+    background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;
+  }
+  .tagbox:focus-within { border-color: var(--blue); }
+  .tags { display: contents; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 2px; height: 40px; padding: 0 2px 0 12px; border-radius: 8px;
+    background: var(--blue); color: var(--blue-ink); font: 700 20px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 16px; }
+  .tagbox input { flex: 1; min-width: 90px; height: 40px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
+  .tagbox input::placeholder { color: var(--ink-3); }
+
+  /* Meaning: its own column, always open, no disclosure. */
+  #sec-meaning { grid-area: meaning; margin: 0; }
+  .meaning .disclosure { pointer-events: none; }
+  .meaning .disclosure .chev, .meaning .peekwrap { display: none; }
+  .meaning .bodywrap { grid-template-rows: 1fr; opacity: 1; }
+  .meaning .panel { padding: 20px 22px; border-radius: 16px; }
+
+  /* Answers: full-width cards, tiles beside their gloss, the top answer set apart. */
+  #sec-answers, .empty-state { grid-area: answers; }
+  #sec-answers { border-top: 0; padding-top: 0; margin: 0; }
+  #sec-answers > h2, #sec-answers .lenrow, .len { display: none; }
+  /* Related words only stand in when nothing published came back. */
+  .answers.published ~ .subhead, .answers.published ~ .subhead + .answers { display: none; }
+  .answers { gap: 8px; }
+  .row {
+    grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; align-items: center;
+    gap: 10px 28px; padding: 14px 18px; border: 1px solid var(--rule); border-radius: 14px; cursor: pointer;
+  }
+  .row:first-child { border-top: 1px solid var(--rule); }
+  .row:hover { background: var(--rule-2); }
+  .row.dim { opacity: 1; }
+  .answers.published .row:first-child { border-color: var(--blue); background: var(--blue-tint); }
+  /* Room for six tiles, so glosses line up for the short fill that makes up most answers. */
+  .tiles { gap: 5px; min-width: 342px; }
+  .tile { width: 52px; height: 52px; border: 0; border-radius: 4px; background: var(--rule); font: 700 26px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .tile.hit { background: var(--blue); color: var(--blue-ink); }
+  .tiles.long { gap: 3px; }
+  .tiles.long .tile { width: 36px; height: 40px; font-size: 19px; border-radius: 4px; }
+  .gloss { font-size: 16px; color: var(--ink); }
+
+  #recent { grid-area: recent; }
+  .recent { flex-wrap: wrap; overflow: visible; padding: 0; margin: 0; }
+}

@@ -5,6 +5,7 @@ import { findPublished } from './providers/cluebank';
 import { findClued } from './providers/crosswordese';
 import { datamuse } from './providers/datamuse';
 import { dictionaryapi } from './providers/dictionaryapi';
+import { fillGlosses } from './providers/glosses';
 import { buildLinks } from './providers/links';
 import { wikipedia } from './providers/wikipedia';
 import { wiktionary } from './providers/wiktionary';
@@ -93,7 +94,11 @@ async function fetchAnswers(
   }
   const merged = capAnswers(rankAnswers(mergeAnswers([...published, ...local, ...remote]), req));
   on.answers?.(merged);
-  return merged;
+
+  // Published answers without a gloss get one looked up; paint again only if any were found.
+  const glossed = await fillGlosses(merged, signal);
+  if (glossed !== merged) on.answers?.(glossed);
+  return glossed;
 }
 
 export async function solve(req: SolveRequest, signal: AbortSignal, on: SolveEvents): Promise<SolveResult> {

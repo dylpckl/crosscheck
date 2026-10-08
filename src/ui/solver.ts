@@ -18,10 +18,16 @@ export interface Solver {
   applySettings(): void;
 }
 
+/** Lengths the desktop slider offers after "Any". */
+const LENGTHS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+/** Wide screens get the two-column layout, always-open meaning, and search as you type. */
+const desk = matchMedia('(min-width: 1024px)');
+
 export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   view.innerHTML = `
     <div class="searchbar">
       <div class="querybar" id="querybar">
+      <span class="ctl-label desk-only" aria-hidden="true">Clue</span>
       <form class="search" id="form" autocomplete="off">
         <label class="field">
           <span class="sr">Clue</span>
@@ -49,6 +55,23 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
         </label>
         <span class="hint" id="phint"></span>
       </div>
+      <!-- Desktop only: length and letters as separate controls beside the
+           big clue input. Both feed the same request fields the parked
+           pattern input above would. -->
+      <div class="desk-controls">
+        <label class="lenctl">
+          <span class="ctl-head"><span class="ctl-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
+          <input id="len" type="range" min="0" max="${LENGTHS.length}" step="1" value="0" aria-valuetext="Any length">
+          <span class="ticks" id="ticks" aria-hidden="true"><span class="on">Any</span>${LENGTHS.map((n) => `<span>${n}</span>`).join('')}</span>
+        </label>
+        <div class="letctl">
+          <span class="ctl-label" id="letters-label">Letters you have</span>
+          <div class="tagbox" id="tagbox">
+            <span class="tags" id="tags"></span>
+            <input id="tagin" type="text" placeholder="Type a letter" aria-labelledby="letters-label" autocapitalize="characters" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+      </div>
     </div>
     <div id="recent"></div>
     <div id="out"></div>`;
@@ -56,7 +79,32 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   const $ = <T extends HTMLElement>(id: string) => view.querySelector<T>(`#${id}`)!;
   const q = $<HTMLInputElement>('q'), p = $<HTMLInputElement>('p'), out = $('out'), form = $<HTMLFormElement>('form');
   const phint = $('phint'), formError = $('formError'), clearBtn = $('clear'), pclear = $<HTMLButtonElement>('pclear');
+  const len = $<HTMLInputElement>('len'), tagin = $<HTMLInputElement>('tagin');
   const sections = { meaning: '', answers: '' };
+
+  /** Desktop constraints: an exact length (null = any) and the letters already known, in any order. */
+  let deskLength: number | null = null;
+  let deskLetters = '';
+
+  /**
+   * Letters can change while a search is in flight. Results arriving for the
+   * same fetch are re-ranked against the letters as they stand now, so a
+   * letter typed mid-search is not lost when the result lands.
+   */
+  function restrain(req: SolveRequest, answers: Answer[]): { req: SolveRequest; answers: Answer[] } {
+    const now = request();
+    if (isBuildError(now) || now.query !== req.query || now.pattern !== req.pattern || now.length !== req.length) return { req, answers };
+    return { req: now, answers: rankAnswers(answers, now) };
+  }
+
+  /** The request as the inputs stand, desktop constraints included. */
+  function request(): ReturnType<typeof buildRequest> {
+    const built = buildRequest(q.value, p.value);
+    if (isBuildError(built)) return built;
+    if (deskLength && !built.pattern) built.length = deskLength;
+    if (deskLetters) built.letters = deskLetters;
+    return built;
+  }
 
   /**
    * Wrap a re-render so the browser tweens between the old and new lists.
@@ -87,6 +135,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
    * it's wanted. Sections keep a fixed order, so nothing reflows as results land.
    */
   let meaningOpen = false;
+  /** On desktop, Meaning has its own column and is always open. */
+  const meaningShown = () => meaningOpen || desk.matches;
   /** Length segment selection. View-only, reset on each new search. */
   let lengthFilter: number | null = null;
   /** Spoiler mode: whether this search's answers have been tapped open. */
@@ -144,13 +194,14 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   function renderSections() {
     if (current) {
       const r = current, req = r.request;
-      sections.meaning = renderMeaning(r.definition, r.reference, r.links, req.query, r.errors, { open: meaningOpen });
+      sections.meaning = renderMeaning(r.definition, r.reference, r.links, req.query, r.errors, { open: meaningShown() });
     }
     renderAnswersSection();
   }
 
   /** Toggling only flips a class, so the CSS height transition can run. */
   function toggleMeaning() {
+    if (desk.matches) return;
     meaningOpen = !meaningOpen;
     const sec = out.querySelector('#sec-meaning');
     sec?.classList.toggle('open', meaningOpen);
@@ -160,7 +211,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   }
 
   function applySettings() {
-    document.body.classList.toggle('search-bottom', getSettings().searchPosition === 'bottom');
+    // The bottom dock is a phone affordance; the desktop layout keeps the input in its column.
+    document.body.classList.toggle('search-bottom', getSettings().searchPosition === 'bottom' && !desk.matches);
     repaintAll();
   }
   /** Empty input means no results: drop them rather than leave a stale answer set. */
@@ -168,9 +220,10 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     ctl?.abort();
     ctl = null;
     clearTimeout(liveTimer);
+    clearTimeout(historyTimer);
     current = null;
     live = null;
-    lengthFilter = null;
+    lengthFilter = deskLength;
     revealed = false;
     sections.meaning = '';
     sections.answers = '';
@@ -200,8 +253,14 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   /** Letters changed: re-rank what we have instantly. Pattern/length changed: refetch. */
   function onConstraintInput() {
     updateHint();
+    if (!current && live) {
+      // Still loading: re-rank what has arrived; the finished result picks the letters up via restrain().
+      live = restrain(live.req, live.answers);
+      renderAnswersSection();
+      paintAnswers();
+    }
     if (!current) return;
-    const built = buildRequest(q.value, p.value);
+    const built = request();
     if (isBuildError(built)) return;
     const sameFetch = built.query === current.request.query && built.pattern === current.request.pattern && built.length === current.request.length;
     clearTimeout(liveTimer);
@@ -209,12 +268,19 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       current = { ...current, request: built, answers: rankAnswers(current.answers, built) };
       repaintAll();
     } else {
-      liveTimer = window.setTimeout(run, 500);
+      liveTimer = window.setTimeout(() => run(true), desk.matches ? 250 : 500);
     }
   }
 
-  async function run() {
-    const built = buildRequest(q.value, p.value);
+  /**
+   * Searches fired by typing are provisional: "tid" on the way to "tide" is
+   * not a search anyone made. They reach history only once the input has
+   * rested on them; a submitted search goes in at once.
+   */
+  let historyTimer: number | undefined;
+
+  async function run(fromTyping = false) {
+    const built = request();
     if (isBuildError(built)) {
       formError.textContent = built.error;
       formError.hidden = false;
@@ -223,30 +289,36 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     formError.hidden = true;
     const req: SolveRequest = built;
     ctl?.abort();
+    clearTimeout(historyTimer);
     ctl = new AbortController();
     const mine = ctl;
-    lengthFilter = null;
+    lengthFilter = deskLength;
     revealed = false;
+    // Typing over results already on screen keeps them until the new ones
+    // land, rather than flashing skeletons on every pause.
+    const keep = fromTyping && Boolean(current || live);
     current = null;
     live = null;
-    sections.meaning = skeletonMeaning();
-    sections.answers = skeletonAnswers();
     meaningOpen = false;
-    paint();
+    if (!keep) {
+      sections.meaning = skeletonMeaning();
+      sections.answers = skeletonAnswers();
+      paint();
+    }
 
     // The two halves of Meaning land separately; keep both and redraw the pair.
     let liveDef: Parameters<typeof renderMeaning>[0] = null;
     let liveRef: Parameters<typeof renderMeaning>[1] = null;
     const paintMeaning = () => {
-      sections.meaning = renderMeaning(liveDef, liveRef, buildLinks(req.query, liveRef !== null), req.query, [], { open: meaningOpen });
+      sections.meaning = renderMeaning(liveDef, liveRef, buildLinks(req.query, liveRef !== null), req.query, [], { open: meaningShown() });
       paintMeaningSection();
     };
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!desk.matches) window.scrollTo({ top: 0, behavior: 'smooth' });
 
     const result = await solve(req, mine.signal, {
       answers: (a) => {
         if (mine.signal.aborted) return;
-        live = { req, answers: a };
+        live = restrain(req, a);
         renderAnswersSection();
         paintAnswers();
       },
@@ -262,24 +334,102 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       },
       done: (r) => {
         if (mine.signal.aborted) return;
-        current = r;
+        const now = restrain(r.request, r.answers);
+        current = { ...r, request: now.req, answers: now.answers };
         repaintAll();
       },
     });
     if (mine.signal.aborted) return;
-    pushHistory({ query: req.query, pattern: req.pattern, letters: req.letters, at: Date.now(), topAnswer: result.answers[0]?.answer });
-    refreshHistory();
+    const record = () => {
+      pushHistory({ query: req.query, pattern: req.pattern, letters: req.letters, at: Date.now(), topAnswer: result.answers[0]?.answer });
+      refreshHistory();
+    };
+    if (fromTyping) historyTimer = window.setTimeout(record, 2000);
+    else record();
   }
 
   // ---- events ----
-  form.addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(liveTimer); q.blur(); run(); });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearTimeout(liveTimer);
+    // Blurring drops the phone keyboard so results have the screen; on desktop it would just lose the caret.
+    if (!desk.matches) q.blur();
+    run();
+  });
   q.addEventListener('input', () => {
     clearBtn.hidden = !q.value;
     if (!q.value.trim()) { clearResults(); return; }
-    if (getSettings().liveSearch && navigator.onLine && q.value.trim().length >= 3) {
+    // Desktop always searches as you type: the local sources answer instantly, and only the network calls wait out the pause.
+    if ((getSettings().liveSearch || desk.matches) && navigator.onLine && q.value.trim().length >= 3) {
       clearTimeout(liveTimer);
-      liveTimer = window.setTimeout(run, 450);
+      liveTimer = window.setTimeout(() => run(true), desk.matches ? 250 : 450);
     }
+  });
+
+  // ---- desktop constraints ----
+  function setLength(n: number | null) {
+    deskLength = n;
+    len.value = String(n === null ? 0 : LENGTHS.indexOf(n) + 1);
+    const label = n === null ? 'Any length' : `${n} letters`;
+    $('lenval').textContent = label;
+    len.setAttribute('aria-valuetext', label);
+    $('ticks').querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === Number(len.value)));
+  }
+  len.addEventListener('input', () => {
+    setLength(LENGTHS[Number(len.value) - 1] ?? null);
+    // Filter what is on screen now; onConstraintInput refetches for the new length after a pause.
+    lengthFilter = deskLength;
+    renderAnswersSection();
+    paintAnswers();
+    onConstraintInput();
+  });
+
+  function setLetters(letters: string) {
+    deskLetters = letters;
+    $('tags').innerHTML = [...letters]
+      .map((c) => `<span class="tag">${c}<button type="button" data-untag="${c}" aria-label="Remove ${c}">×</button></span>`)
+      .join('');
+  }
+  /** Letters only re-rank and highlight, so they apply instantly with no fetch. */
+  function changeLetters(letters: string) {
+    setLetters(letters);
+    onConstraintInput();
+  }
+  tagin.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[a-z]$/i.test(e.key)) {
+      e.preventDefault();
+      const c = e.key.toUpperCase();
+      if (!deskLetters.includes(c)) changeLetters(deskLetters + c);
+    } else if (e.key === 'Backspace' && !tagin.value && deskLetters) {
+      e.preventDefault();
+      changeLetters(deskLetters.slice(0, -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  // Paste, autocorrect and on-screen keyboards arrive as input rather than keydown.
+  tagin.addEventListener('input', () => {
+    const add = [...new Set(tagin.value.toUpperCase().replace(/[^A-Z]/g, ''))].filter((c) => !deskLetters.includes(c));
+    tagin.value = '';
+    if (add.length) changeLetters(deskLetters + add.join(''));
+  });
+  $('tagbox').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-untag]');
+    if (b) changeLetters(deskLetters.replace(b.dataset.untag!, ''));
+    tagin.focus();
+  });
+
+  desk.addEventListener('change', () => {
+    // The desktop controls vanish below the breakpoint; don't leave their constraints applied invisibly.
+    if (!desk.matches && (deskLength || deskLetters)) {
+      setLength(null);
+      setLetters('');
+      lengthFilter = null;
+      onConstraintInput();
+    }
+    applySettings();
   });
   clearBtn.addEventListener('click', () => {
     q.value = '';
@@ -340,7 +490,15 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   function setQuery(query: string, pattern = '', submit = false) {
     q.value = query;
     clearBtn.hidden = !query;
-    p.value = pattern;
+    // History stores one constraint string; on desktop it lands in the controls that own each part.
+    const c = parsePattern(pattern);
+    if (desk.matches && !c.pattern) {
+      p.value = '';
+      setLength(c.length ?? null);
+      setLetters(c.letters ?? '');
+    } else {
+      p.value = pattern;
+    }
     updateHint();
     if (submit) run();
   }

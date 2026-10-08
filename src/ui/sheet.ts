@@ -27,13 +27,13 @@ export function mountSheet(shell: Shell, onChange: () => void) {
         <div class="seg" role="group" aria-label="Theme">${(['system', 'light', 'dark'] as Theme[])
           .map((t) => `<button data-theme="${t}" aria-pressed="${s.theme === t}">${t[0]!.toUpperCase() + t.slice(1)}</button>`)
           .join('')}</div></div>
-      <div class="setting"><div class="text"><div class="label">Search box</div><div class="sub">${
+      <div class="setting mobile-only"><div class="text"><div class="label">Search box</div><div class="sub">${
         s.searchPosition === 'top' ? 'Under the app bar.' : 'Docked at the bottom, in thumb reach.'
       }</div></div>
         <div class="seg" role="group" aria-label="Search box position">${(['top', 'bottom'] as SearchPosition[])
           .map((p) => `<button data-pos="${p}" aria-pressed="${s.searchPosition === p}">${p === 'top' ? 'Top' : 'Bottom'}</button>`)
           .join('')}</div></div>
-      <div class="setting"><div class="text"><div class="label">Search as you type</div><div class="sub">Solves after a short pause. Uses more of the free quota.</div></div>
+      <div class="setting mobile-only"><div class="text"><div class="label">Search as you type</div><div class="sub">Solves after a short pause. Uses more of the free quota.</div></div>
         <button class="switch" role="switch" aria-checked="${s.liveSearch}" data-key="liveSearch" aria-label="Search as you type"></button></div>
       <div class="setting"><div class="text"><div class="label">Hide answers</div><div class="sub">Read the meaning first; tap to reveal the answers.</div></div>
         <button class="switch" role="switch" aria-checked="${s.hideAnswers}" data-key="hideAnswers" aria-label="Hide answers until revealed"></button></div>
