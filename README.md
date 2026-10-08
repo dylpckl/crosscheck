@@ -5,7 +5,6 @@ tiles plus what it means. Mobile-first PWA, no backend.
 
 - Spec: [`SPEC.md`](SPEC.md)
 - Data contract: [`src/contract.ts`](src/contract.ts)
-- Prototype handoff: [`docs/HANDOFF.md`](docs/HANDOFF.md)
 
 ## Develop
 
@@ -28,10 +27,10 @@ means CORS or a content blocker.
 
 ## Deploy
 
-Pushing to `main` builds and deploys to GitHub Pages via
-`.github/workflows/deploy.yml`. Enable Pages with source "GitHub Actions" in
-the repository settings once. Any static host works too: `npm run build` and
-serve `dist/` (set `BASE_PATH` if the app lives under a sub-path).
+Hosted on Vercel at <https://crosscheck.dylansmith.dev>. Vercel builds every
+push: `main` goes to production, other branches and PRs get a preview URL.
+The build runs `npm test && npm run build` (see `vercel.json`), so a failing
+test fails the deploy.
 
 ## Data sources
 

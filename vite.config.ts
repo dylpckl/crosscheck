@@ -2,9 +2,9 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { execSync } from 'node:child_process';
 
-// Short commit hash of the build: from the CI runner, else from git, else 'dev'.
+// Short commit hash of the build: from Vercel, else from git, else 'dev'.
 function commitHash(): string {
-  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7);
   try {
     return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
   } catch {
@@ -12,14 +12,13 @@ function commitHash(): string {
   }
 }
 
-// GitHub Pages serves project sites under /<repo>/. The deploy workflow sets
-// BASE_PATH; local dev and other hosts default to '/'.
-const base = process.env.BASE_PATH ?? '/';
+// Served from the root of crosscheck.dylansmith.dev.
+const base = '/';
 
 export default defineConfig({
   base,
   define: { __APP_COMMIT__: JSON.stringify(commitHash()) },
-  build: { target: 'es2022', sourcemap: true },
+  build: { target: 'es2022' },
   test: { environment: 'jsdom' },
   plugins: [
     VitePWA({

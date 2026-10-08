@@ -2,8 +2,7 @@
  * Crosscheck — data model contract.
  *
  * This file is the single source of truth for the shapes that flow between
- * the UI, the provider adapters, the cache, and (later) the optional Claude
- * proxy. Every provider normalizes its raw API response into these types;
+ * the UI, the provider adapters, and the cache. Every provider normalizes its raw API response into these types;
  * the UI never sees a raw upstream payload.
  *
  * Rules:
@@ -58,7 +57,7 @@ export interface SolveRequest {
 // Answers (the crossword side)
 // ---------------------------------------------------------------------------
 
-export type AnswerSource = 'datamuse' | 'crosswordese' | 'cluebank' | 'claude';
+export type AnswerSource = 'datamuse' | 'crosswordese' | 'cluebank';
 
 export interface Answer {
   /** Grid form: "RIPCURRENT". Used for pattern matching, dedupe, and tiles. */
@@ -72,7 +71,7 @@ export interface Answer {
    * answer, lower for the rest. Not a probability and not comparable across
    * queries. Datamuse returns an unscaled integer `score` whose only meaning
    * is ordering within one response; this is that score divided by the
-   * highest score in the response. Claude answers set this themselves.
+   * highest score in the response.
    */
   score: number;
   /** The provider's raw score, for display. Datamuse: the unscaled integer. */
@@ -98,7 +97,7 @@ export interface Answer {
   letterHits?: number;
   /**
    * One-line "why": a short definition (Datamuse), the stock gloss for a
-   * conventional answer (Crosswordese), or reasoning (Claude).
+   * conventional answer (Crosswordese).
    */
   gloss?: string;
   /** Datamuse tags: "n", "v", "adj", "adv", "prop" (proper noun). */
@@ -248,18 +247,4 @@ export interface CacheEntry {
   result: SolveResult;
   /** Epoch ms. Result cache TTL is 7 days; served stale when offline. */
   expiresAt: number;
-}
-
-// ---------------------------------------------------------------------------
-// Optional phase-2 backend (Claude proxy). Same shapes, over HTTP.
-// ---------------------------------------------------------------------------
-
-/** POST /api/solve — request body. */
-export type ProxySolveRequest = SolveRequest;
-
-/** POST /api/solve — response body. Merged into SolveResult.answers with source 'claude'. */
-export interface ProxySolveResponse {
-  answers: Array<Pick<Answer, 'display' | 'gloss' | 'score'>>;
-  /** Server-side model/version tag for debugging. Not shown to users. */
-  meta?: { model: string; ms: number };
 }
