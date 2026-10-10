@@ -16,9 +16,6 @@ const GITHUB_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="t
 const SITE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg>';
 const COFFEE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>';
 
-/** Phones and wide screens each keep their own search-as-you-type setting; the sheet shows the one in effect. */
-const liveKey = () => (desk.matches ? 'liveSearchDesktop' : 'liveSearch') as 'liveSearch' | 'liveSearchDesktop';
-
 export function mountSheet(shell: Shell, onChange: () => void) {
   const view = shell.sheetBody;
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(getSettings().theme));
@@ -37,8 +34,6 @@ export function mountSheet(shell: Shell, onChange: () => void) {
         <div class="seg" role="group" aria-label="Search box position">${(['top', 'bottom'] as SearchPosition[])
           .map((p) => `<button data-pos="${p}" aria-pressed="${s.searchPosition === p}">${p === 'top' ? 'Top' : 'Bottom'}</button>`)
           .join('')}</div></div>
-      <div class="setting"><div class="text"><div class="label">Search as you type</div><div class="sub">Solves after a short pause. Uses more of the free quota.</div></div>
-        <button class="switch" role="switch" aria-checked="${s[liveKey()]}" data-key="${liveKey()}" aria-label="Search as you type"></button></div>
       <div class="setting"><div class="text"><div class="label">Hide answers</div><div class="sub">Read the meaning first; tap to reveal the answers.</div></div>
         <button class="switch" role="switch" aria-checked="${s.hideAnswers}" data-key="hideAnswers" aria-label="Hide answers until revealed"></button></div>
       <div class="setting"><div class="text"><div class="label">Recent searches</div><div class="sub">Stored only on this device.</div></div>
@@ -66,12 +61,6 @@ export function mountSheet(shell: Shell, onChange: () => void) {
     if (!t) return;
     if (t.dataset.theme) { applyTheme(saveSettings({ theme: t.dataset.theme as Theme }).theme); render(); }
     else if (t.dataset.pos) { saveSettings({ searchPosition: t.dataset.pos as SearchPosition }); render(); onChange(); }
-    else if (t.dataset.key === 'liveSearch' || t.dataset.key === 'liveSearchDesktop') {
-      const key = t.dataset.key;
-      saveSettings({ [key]: !getSettings()[key] });
-      render();
-      onChange();
-    }
     else if (t.dataset.key === 'hideAnswers') { saveSettings({ hideAnswers: !getSettings().hideAnswers }); render(); onChange(); }
     else if (t.dataset.action === 'clearHistory') { clearHistory(); onChange(); shell.toast('Recent searches cleared'); }
     else if (t.dataset.action === 'clearCache') { clearCache(); shell.toast('Cached results cleared'); }

@@ -424,9 +424,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     clearBtn.hidden = !q.value;
     fitClue();
     if (!q.value.trim()) { clearResults(); return; }
-    // Each layout has its own setting, on by default on desktop. The whole search waits out a short pause, shorter on desktop.
-    const s = getSettings();
-    if ((desk.matches ? s.liveSearchDesktop : s.liveSearch) && navigator.onLine && q.value.trim().length >= 3) {
+    // Search as you type, on every layout. The whole search waits out a short pause, longer on a phone where typing is slower.
+    if (navigator.onLine && q.value.trim().length >= 3) {
       clearTimeout(liveTimer);
       liveTimer = window.setTimeout(() => run(true), desk.matches ? 250 : 450);
     }

@@ -282,8 +282,9 @@ pills that scrolls sideways. Under the input, it outranked the answers.
 Behavior:
 
 - Submit with the solve button trailing the clue, or the keyboard's Search
-  key (`enterkeyhint=search`). Search as you type is a setting, off by default on phones,
-  debounced 450ms once the query is 3 characters or more, online only.
+  key (`enterkeyhint=search`), or just pause: search as you type is on
+  everywhere, debounced 450ms on phones once the query is 3 characters or
+  more, online only. Results already on screen stay until new ones land.
 - The search bar scrolls with the page: with the slider it is tall enough
   that pinning it would cost the answers a third of the screen. The "Search
   box: bottom" setting docks the clue input alone at the bottom, in thumb
@@ -336,9 +337,8 @@ One centered column, max 1080px. Same DOM as mobile, rearranged by CSS grid
   re-rank and highlight, never filter or refetch. Positional patterns have
   no desktop control; one arriving from history or a link becomes its
   length plus its known letters, and the hidden pattern input is never read.
-- **Search as you type** has its own setting (`liveSearchDesktop`), on by
-  default, debounced 250ms. Results already on screen stay until new ones
-  land. A typed search reaches history only after resting 2s on it.
+- **Search as you type** is debounced 250ms here rather than the phone's
+  450ms. A typed search reaches history only after resting 2s on it.
 - **Meaning** is always open and holds its column from the start with a
   fixed height (size containment); long entries scroll inside the card.
 - **Answers** are the same cards, tiles beside their gloss whatever the
@@ -482,9 +482,11 @@ test/
 
 ## 9. Open questions (non-blocking, defaults chosen)
 
-- **Live-as-you-type vs submit only.** Resolved per layout: off by default on
-  phones (a toggle), on by default on desktop (its own toggle). Live mode
-  still costs Datamuse quota on every pause.
+- **Live-as-you-type vs submit only.** Resolved: on everywhere, no toggle.
+  The clue bank and corpus answer locally while you type; the Datamuse
+  quota (100k/day) is far beyond what pauses on a phone can spend.
+- **Search box at the top or the bottom.** Top by default, bottom kept as a
+  setting for now; the call is to be made after living with both on a phone.
 - **Answer count.** Default cap 24; the prototype showed ~8. Tune after use.
 - **Proper-noun answers.** Datamuse tags them `prop`. Default: keep them,
   since crosswords love them, but sort slightly lower than common words.
