@@ -48,12 +48,11 @@ export function mountSheet(shell: Shell, onChange: () => void) {
 
       <div class="sheet-about">
         <div class="name">Crosscheck</div>
-        <p>Type a word or phrase. It gets solved as a crossword clue and defined as a word, in one go. Tap the Meaning header to open or close the definition, or turn on Hide answers to read the meaning before seeing them. Set a length to keep only answers that fit; on a wide screen you can also add letters you already have to rank the answers that contain them.</p>
-        <p>Answers from Datamuse. Definitions from the Free Dictionary API and Wiktionary. Summaries from Wikipedia. All free, no account, and nothing you type is sent anywhere else.</p>
+        <p>Answers from a bank of published clues, a crosswordese corpus and Datamuse. Definitions from the Free Dictionary API and Wiktionary. Summaries from Wikipedia.</p>
         <div class="chips">
+          <a class="primary" href="${DONATE_URL}" target="_blank" rel="noopener">${COFFEE_ICON}Buy me a coffee</a>
           <a href="${REPO_URL}" target="_blank" rel="noopener">${GITHUB_ICON}GitHub</a>
           <a href="${AUTHOR_URL}" target="_blank" rel="noopener">${SITE_ICON}dylansmith.dev</a>
-          <a href="${DONATE_URL}" target="_blank" rel="noopener">${COFFEE_ICON}Buy me a coffee</a>
         </div>
         <div class="build">
           <a href="${REPO_URL}/commit/${COMMIT}" target="_blank" rel="noopener">Build ${COMMIT}</a>

@@ -117,6 +117,8 @@ body.locked { overflow: hidden; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 .chips a { text-decoration: none; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--rule); border-radius: 999px; padding: 9px 14px; font-size: 13.5px; color: var(--ink-2); min-height: 42px; }
 .chips a svg { width: 15px; height: 15px; color: var(--ink-3); }
+.chips a.primary { background: var(--blue); border-color: var(--blue); color: var(--blue-ink); }
+.chips a.primary svg { color: inherit; }
 .build { margin-top: 16px; font-size: 12px; color: var(--ink-3); }
 .build a { color: var(--ink-3); text-decoration: none; }
 .linkish { border: 0; background: transparent; color: var(--blue); font-size: 12px; padding: 4px 0; }
