@@ -1,9 +1,14 @@
 import type { HistoryEntry } from '../contract';
 import { esc } from './util';
 
+/**
+ * Recent searches, under the answers: a row of pills that scrolls sideways on
+ * a phone and wraps on a wide screen. Where they were, under the input, they
+ * outranked the answers; at the bottom they are there when a search is done.
+ */
 export function renderHistory(list: HistoryEntry[]): string {
   if (!list.length) return '';
-  return `<div class="recent" role="group" aria-label="Recent searches">${list
+  return `<section class="section recent-sec"><h2>Recent</h2><div class="recent" role="group" aria-label="Recent searches">${list
     .slice(0, 12)
     .map(
       (h) =>
@@ -11,5 +16,5 @@ export function renderHistory(list: HistoryEntry[]): string {
           h.pattern || h.letters ? `<code>${esc(h.pattern ?? h.letters ?? '')}</code>` : ''
         }</button>`,
     )
-    .join('')}</div>`;
+    .join('')}</div></section>`;
 }

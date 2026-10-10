@@ -4,21 +4,17 @@ import { esc } from './util';
 const EXAMPLES = ['old testament prophet', 'tide'];
 
 /**
- * Shown when there is nothing to show: first load, or after clearing the input.
- * Examples only appear before there is any history, since recent searches do
- * the same job better once they exist.
+ * A line of welcome above the face-down board. The board is the empty state;
+ * this only says what to do with it, and only until there is any history,
+ * since recent searches do the same job better once they exist. Desktop,
+ * which has room to speak for itself, hides it.
  */
 export function renderEmpty(showExamples: boolean): string {
-  return `<div class="empty-state">
-    <div class="motif" aria-hidden="true">${'CLUE'.split('').map((c) => `<span class="tile">${c}</span>`).join('')}</div>
-    <h2>Type a clue or a word</h2>
-    <p>Crosscheck solves it as a crossword clue and defines it as a word, in one go.</p>
-    ${
-      showExamples
-        ? `<div class="examples"><span class="eyebrow">Try one</span>${EXAMPLES.map(
-            (e) => `<button type="button" data-example="${esc(e)}">${esc(e)}</button>`,
-          ).join('')}</div>`
-        : ''
-    }
+  if (!showExamples) return '';
+  return `<div class="intro">
+    <p>Type a clue or a word. It gets solved as a crossword clue and defined as a word, in one go.</p>
+    <div class="examples"><span class="eyebrow">Try one</span>${EXAMPLES.map(
+      (e) => `<button type="button" data-example="${esc(e)}">${esc(e)}</button>`,
+    ).join('')}</div>
   </div>`;
 }

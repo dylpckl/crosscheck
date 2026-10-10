@@ -48,7 +48,7 @@ export function mountSheet(shell: Shell, onChange: () => void) {
 
       <div class="sheet-about">
         <div class="name">Crosscheck</div>
-        <p>Type a word or phrase. It gets solved as a crossword clue and defined as a word, in one go. Tap the Meaning header to open or close the definition, or turn on Hide answers to read the meaning before seeing them. Add letters you already have to rank the answers that contain them, or a pattern like <code>SC?D?</code> to match by position.</p>
+        <p>Type a word or phrase. It gets solved as a crossword clue and defined as a word, in one go. Tap the Meaning header to open or close the definition, or turn on Hide answers to read the meaning before seeing them. Set a length to keep only answers that fit; on a wide screen you can also add letters you already have to rank the answers that contain them.</p>
         <p>Answers from Datamuse. Definitions from the Free Dictionary API and Wiktionary. Summaries from Wikipedia. All free, no account, and nothing you type is sent anywhere else.</p>
         <div class="chips">
           <a href="${REPO_URL}" target="_blank" rel="noopener">${GITHUB_ICON}GitHub</a>

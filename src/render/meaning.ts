@@ -6,16 +6,16 @@ const SHOWN = 2;
 const SOURCE_LABEL = { dictionaryapi: 'Free Dictionary API', wiktionary: 'Wiktionary', datamuse: 'Datamuse' } as const;
 const CHEVRON = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 
-export function skeletonMeaning(): string {
-  return `<section class="section meaning" id="sec-meaning"><h2>Meaning</h2><div class="sk short"></div></section>`;
-}
-
 /**
- * Desktop: Meaning holds its column from the start, so nothing shifts when a
- * definition lands. Until then the card is blank, matching the face-down board.
+ * Meaning holds its place from the start, so nothing shifts when a definition
+ * lands. Until then it is blank, matching the face-down board: one bar where
+ * the collapsed line goes on a phone, a blank card in the desktop column.
+ * The desktop stylesheet shows the card and hides the line, as it does for
+ * the real section, so no `open` class is needed here.
  */
 export function renderBlankMeaning(): string {
-  return `<section class="section meaning open blankmeaning" id="sec-meaning" aria-hidden="true"><h2>Meaning</h2>
+  return `<section class="section meaning blankmeaning" id="sec-meaning" aria-hidden="true"><h2>Meaning</h2>
+    <div class="peekwrap"><div class="inner"><i class="bar w70"></i></div></div>
     <div class="bodywrap"><div class="inner"><div class="panel"><i class="bar w40"></i><i class="bar"></i><i class="bar w80"></i><i class="bar w60"></i></div></div></div></section>`;
 }
 

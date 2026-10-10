@@ -1,9 +1,9 @@
 import type { Answer, SolveResult, SolveRequest } from '../contract';
 import { parsePattern } from '../pattern';
-import { renderAnswers, renderBlankAnswers, skeletonAnswers } from '../render/answers';
+import { renderAnswers, renderBlankAnswers } from '../render/answers';
 import { renderEmpty } from '../render/empty';
 import { renderHistory } from '../render/history';
-import { renderBlankMeaning, renderMeaning, skeletonMeaning } from '../render/meaning';
+import { renderBlankMeaning, renderMeaning } from '../render/meaning';
 import { esc } from '../render/util';
 import { rankAnswers } from '../rank';
 import { buildRequest, isBuildError, solve } from '../solve';
@@ -19,25 +19,29 @@ export interface Solver {
   applySettings(): void;
 }
 
-/** Lengths the desktop slider offers after "Any". */
-const LENGTHS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+/**
+ * Lengths the slider offers after "Any". Wide screens get the full crossword
+ * range. Phones stop at 8: in the shipped clue bank, 3 to 8 letters covers
+ * 94% of published answers, and seven stops across a phone-width track is
+ * what a thumb can land on; the long tail is better served by the hand-off.
+ */
+const LENGTHS_WIDE = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const LENGTHS_PHONE = [3, 4, 5, 6, 7, 8];
+const lengths = () => (desk.matches ? LENGTHS_WIDE : LENGTHS_PHONE);
 
 export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   view.innerHTML = `
     <div class="searchbar">
       <div class="querybar" id="querybar">
-      <span class="ctl-label desk-only" aria-hidden="true">Clue</span>
+      <span class="ctl-label" aria-hidden="true">Clue</span>
       <form class="search" id="form" autocomplete="off">
-        <label class="field">
+        <label class="field" id="field">
           <span class="sr">Clue</span>
           <input id="q" type="search" inputmode="search" enterkeyhint="search" placeholder="Word or phrase" autofocus>
           <button type="button" class="clear" id="clear" aria-label="Clear" hidden>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg>
           </button>
         </label>
-        <button class="go" type="submit" aria-label="Solve">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        </button>
       </form>
       <div class="form-error" id="formError" hidden></div>
       </div>
@@ -54,14 +58,15 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
         </label>
         <span class="hint" id="phint"></span>
       </div>
-      <!-- Desktop only: length and letters as separate controls beside the
-           big clue input. Both feed the same request fields the parked
-           pattern input above would. -->
-      <div class="desk-controls">
+      <!-- Length and letters as separate controls under the clue. Both feed
+           the same request fields the parked pattern input above would.
+           Letters show on wide screens only; the slider is on every layout,
+           with the phone's ticks past 8 hidden in CSS. -->
+      <div class="controls">
         <label class="lenctl">
           <span class="ctl-head"><span class="ctl-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
-          <input id="len" type="range" min="0" max="${LENGTHS.length}" step="1" value="0" aria-valuetext="Any length">
-          <span class="ticks" id="ticks" aria-hidden="true"><span class="on">Any</span>${LENGTHS.map((n) => `<span>${n}</span>`).join('')}</span>
+          <input id="len" type="range" min="0" max="${lengths().length}" step="1" value="0" aria-valuetext="Any length">
+          <span class="ticks" id="ticks" aria-hidden="true"><span class="on">Any</span>${LENGTHS_WIDE.map((n) => `<span>${n}</span>`).join('')}</span>
         </label>
         <div class="letctl">
           <span class="ctl-label" id="letters-label">Letters you have</span>
@@ -72,17 +77,17 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
         </div>
       </div>
     </div>
-    <div id="recent"></div>
-    <div id="out"></div>`;
+    <div id="out"></div>
+    <div id="recent"></div>`;
 
   const $ = <T extends HTMLElement>(id: string) => view.querySelector<T>(`#${id}`)!;
   const q = $<HTMLInputElement>('q'), p = $<HTMLInputElement>('p'), out = $('out'), form = $<HTMLFormElement>('form');
   const phint = $('phint'), formError = $('formError'), clearBtn = $('clear'), pclear = $<HTMLButtonElement>('pclear');
-  const len = $<HTMLInputElement>('len'), tagin = $<HTMLInputElement>('tagin');
+  const len = $<HTMLInputElement>('len'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
   const sections = { meaning: '', answers: '' };
 
-  /** Desktop constraints: an exact length (null = any) and the letters already known, in any order. */
-  let deskLength: number | null = null;
+  /** The slider's exact length (null = any), and on wide screens the letters already known, in any order. */
+  let sliderLength: number | null = null;
   let deskLetters = '';
 
   /**
@@ -100,14 +105,14 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   const sameFetch = (a: SolveRequest, b: SolveRequest) => a.query === b.query && a.pattern === b.pattern && a.length === b.length;
 
   /**
-   * The request as the inputs stand. On desktop the visible controls are the
-   * whole constraint: the parked pattern input is never read there, so
-   * nothing can apply that the reader can't see.
+   * The request as the inputs stand. The visible controls are the whole
+   * constraint: the parked pattern input is never read, so nothing can apply
+   * that the reader can't see.
    */
   function request(): ReturnType<typeof buildRequest> {
-    const built = buildRequest(q.value, desk.matches ? '' : p.value);
+    const built = buildRequest(q.value, '');
     if (isBuildError(built)) return built;
-    if (deskLength && !built.pattern) built.length = deskLength;
+    if (sliderLength) built.length = sliderLength;
     if (deskLetters) built.letters = deskLetters;
     return built;
   }
@@ -143,8 +148,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   let meaningOpen = false;
   /** On desktop, Meaning has its own column and is always open. */
   const meaningShown = () => meaningOpen || desk.matches;
-  /** Length segment selection. View-only, reset on each new search. */
-  let lengthFilter: number | null = null;
   /** Spoiler mode: whether this search's answers have been tapped open. */
   let revealed = false;
 
@@ -153,8 +156,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     // top of the screen — and it never has to be scrolled past a long list to
     // be found. Spoiler mode builds on the same order.
     const body = sections.meaning + sections.answers;
-    if (!body) resetFlip(desk.matches);
-    out.innerHTML = body || (desk.matches ? renderBlankMeaning() + renderBlankAnswers() : renderEmpty(getHistory().length === 0));
+    if (!body) resetFlip(true);
+    // Nothing to show is a face-down board, with a line of welcome until there is any history to stand in for it.
+    out.innerHTML = body || renderEmpty(getHistory().length === 0) + renderBlankMeaning() + renderBlankAnswers();
   }
   /**
    * Swap one section in place. Rebuilding the whole of `out` for a change to
@@ -218,21 +222,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     paintAnswers();
   }
   /**
-   * Hold the chosen length across a repaint, but drop it if the new answers
-   * have nothing of that length — a filter matching nothing reads as a bug.
+   * Renders from the finished result when there is one, the partial otherwise.
+   * The slider is a standing constraint: it is never dropped because a partial
+   * result has nothing of that length yet, and a length with no answers shows
+   * as none rather than as every length.
    */
-  function keepLengthFilter(answers: Answer[]): number | null {
-    if (lengthFilter !== null && !answers.some((a) => a.length === lengthFilter)) lengthFilter = null;
-    return lengthFilter;
-  }
-  /**
-   * The length to show. The desktop slider is a standing constraint: it is
-   * never dropped because a partial result has nothing of that length yet,
-   * and a length with no answers shows as none rather than as every length.
-   */
-  const lengthOpts = (answers: Answer[]) =>
-    desk.matches && deskLength ? { lengthFilter: deskLength, strictLength: true } : { lengthFilter: keepLengthFilter(answers) };
-  /** Renders from the finished result when there is one, the partial otherwise. */
   function renderAnswersSection() {
     const hidden = getSettings().hideAnswers && !revealed;
     if (current) {
@@ -240,11 +234,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       sections.answers = renderAnswers(r.answers, r.request, {
         fromCache: r.fromCache,
         error: r.errors.find((e) => e.provider === 'Datamuse'),
-        ...lengthOpts(r.answers),
+        lengthFilter: sliderLength,
         hidden,
       });
     } else if (live) {
-      sections.answers = renderAnswers(live.answers, live.req, { ...lengthOpts(live.answers), hidden });
+      sections.answers = renderAnswers(live.answers, live.req, { lengthFilter: sliderLength, hidden });
     }
   }
   function renderSections() {
@@ -279,7 +273,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     clearTimeout(historyTimer);
     current = null;
     live = null;
-    lengthFilter = null;
     revealed = false;
     sections.meaning = '';
     sections.answers = '';
@@ -339,13 +332,10 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
    */
   let historyTimer: number | undefined;
 
-  /** Whether Meaning still shows its loading placeholder rather than anything that came back. */
-  let meaningPending = false;
-  /** Loading placeholders for the layout in effect: the face-down board on desktop, skeletons on a phone. */
+  /** Loading placeholders: the face-down board, on every layout. */
   function placeholders() {
-    sections.meaning = desk.matches ? renderBlankMeaning() : skeletonMeaning();
-    sections.answers = desk.matches ? renderBlankAnswers() : skeletonAnswers();
-    meaningPending = true;
+    sections.meaning = renderBlankMeaning();
+    sections.answers = renderBlankAnswers();
   }
 
   async function run(fromTyping = false) {
@@ -361,15 +351,14 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     clearTimeout(historyTimer);
     ctl = new AbortController();
     const mine = ctl;
-    lengthFilter = null;
     revealed = false;
     // Typing over results already on screen keeps them until the new ones
-    // land, rather than flashing skeletons on every pause.
+    // land, rather than turning the board face down on every pause.
     const keep = fromTyping && Boolean(current || live);
     current = null;
     live = null;
     meaningOpen = false;
-    resetFlip(!keep && desk.matches);
+    resetFlip(!keep);
     if (!keep) {
       placeholders();
       paint();
@@ -380,7 +369,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     let liveRef: Parameters<typeof renderMeaning>[1] = null;
     const paintMeaning = () => {
       sections.meaning = renderMeaning(liveDef, liveRef, buildLinks(req.query, liveRef !== null), req.query, [], { open: meaningShown() });
-      meaningPending = false;
       paintMeaningSection();
     };
     if (!desk.matches) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -427,8 +415,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     if (!desk.matches) q.blur();
     run();
   });
+  /** A long clue steps the serif input down a size on a phone, so more of it stays in view. */
+  const fitClue = () => field.classList.toggle('longq', q.value.length > 14);
   q.addEventListener('input', () => {
     clearBtn.hidden = !q.value;
+    fitClue();
     if (!q.value.trim()) { clearResults(); return; }
     // Each layout has its own setting, on by default on desktop. The whole search waits out a short pause, shorter on desktop.
     const s = getSettings();
@@ -438,19 +429,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     }
   });
 
-  // ---- desktop constraints ----
+  // ---- constraints ----
   function setLength(n: number | null) {
-    // Only lengths the slider can show; anything else (say ?p=20 in a link) means any length.
-    if (n !== null && !LENGTHS.includes(n)) n = null;
-    deskLength = n;
-    len.value = String(n === null ? 0 : LENGTHS.indexOf(n) + 1);
+    // Only lengths this layout's slider can show; anything else (say ?p=20 in a link) means any length.
+    if (n !== null && !lengths().includes(n)) n = null;
+    sliderLength = n;
+    len.max = String(lengths().length);
+    len.value = String(n === null ? 0 : lengths().indexOf(n) + 1);
     const label = n === null ? 'Any length' : `${n} letters`;
     $('lenval').textContent = label;
     len.setAttribute('aria-valuetext', label);
     $('ticks').querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === Number(len.value)));
   }
   len.addEventListener('input', () => {
-    setLength(LENGTHS[Number(len.value) - 1] ?? null);
+    setLength(lengths()[Number(len.value) - 1] ?? null);
     // Filter what is on screen now; onConstraintInput refetches for the new length after a pause.
     // With nothing searched yet there is nothing to filter, and the blank board stays as it is.
     if (current || live) {
@@ -498,28 +490,13 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   });
 
   desk.addEventListener('change', () => {
-    // The desktop controls vanish below the breakpoint; don't leave their constraints applied invisibly.
-    if (!desk.matches && (deskLength || deskLetters)) {
-      setLength(null);
-      setLetters('');
-      lengthFilter = null;
-      onConstraintInput();
-    }
+    // The letters box vanishes below the breakpoint, and the slider shortens;
+    // don't leave a constraint applied that the controls no longer show.
+    const before = sliderLength;
+    setLength(sliderLength);
+    if (!desk.matches && deskLetters) setLetters('');
+    if (before !== sliderLength || (!desk.matches && deskLetters)) onConstraintInput();
     applySettings();
-    if (!current && !live) {
-      // Mid-load, swap in the new layout's placeholders; Meaning only if nothing has landed in it yet.
-      if (sections.answers) {
-        const meaning = sections.meaning;
-        const pending = meaningPending;
-        placeholders();
-        if (!pending) {
-          sections.meaning = meaning;
-          meaningPending = false;
-        }
-        resetFlip(desk.matches);
-      }
-      paint();
-    }
   });
   clearBtn.addEventListener('click', () => {
     q.value = '';
@@ -535,7 +512,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   let holdTimer: number | undefined, held = false;
   out.addEventListener('pointerdown', (e) => {
     const row = (e.target as HTMLElement).closest<HTMLElement>('.row');
-    if (!row) return;
+    // Blank rows on the face-down board have nothing to copy or look up.
+    if (!row?.dataset.answer) return;
     held = false;
     holdTimer = window.setTimeout(() => {
       held = true;
@@ -548,7 +526,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   out.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     const row = t.closest<HTMLElement>('.row');
-    if (row) {
+    if (row?.dataset.answer) {
       if (held) return;
       navigator.clipboard?.writeText(row.dataset.answer!).then(
         () => shell.toast(`Copied ${row.dataset.answer}`),
@@ -558,14 +536,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     }
     if (t.closest('[data-toggle-meaning]')) { toggleMeaning(); return; }
     if (t.closest('[data-reveal-answers]')) { revealed = true; renderAnswersSection(); withTransition(paintAnswers); return; }
-    const len = t.closest<HTMLElement>('[data-len]');
-    if (len) {
-      const n = Number(len.dataset.len);
-      lengthFilter = n === 0 || lengthFilter === n ? null : n;
-      renderAnswersSection();
-      withTransition(paintAnswers);
-      return;
-    }
     const eg = t.closest<HTMLElement>('[data-example]');
     if (eg) { setQuery(eg.dataset.example!, '', true); return; }
     const play = t.closest<HTMLElement>('[data-audio]');
@@ -580,15 +550,15 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   function setQuery(query: string, pattern = '', submit = false, length?: number) {
     q.value = query;
     clearBtn.hidden = !query;
+    fitClue();
     p.value = pattern;
-    if (desk.matches) {
-      // Desktop has no pattern input, so a constraint lands in the controls that own each part.
-      // A positional pattern becomes its length and its known letters, since positions can't show.
-      const c = parsePattern(pattern);
-      const known = c.pattern ? [...new Set(c.pattern.replace(/\?/g, ''))].join('') : (c.letters ?? '');
-      setLength(length ?? c.length ?? null);
-      setLetters(known);
-    }
+    // There is no pattern input, so a constraint lands in the controls that own each part.
+    // A positional pattern becomes its length and its known letters, since positions can't
+    // show; on a phone, which has no letters box either, only the length survives.
+    const c = parsePattern(pattern);
+    const known = c.pattern ? [...new Set(c.pattern.replace(/\?/g, ''))].join('') : (c.letters ?? '');
+    setLength(length ?? c.length ?? null);
+    setLetters(desk.matches ? known : '');
     updateHint();
     if (submit) run();
   }
