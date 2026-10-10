@@ -285,10 +285,9 @@ Behavior:
   key (`enterkeyhint=search`), or just pause: search as you type is on
   everywhere, debounced 450ms on phones once the query is 3 characters or
   more, online only. Results already on screen stay until new ones land.
-- The search bar scrolls with the page: with the slider it is tall enough
-  that pinning it would cost the answers a third of the screen. The "Search
-  box: bottom" setting docks the clue input alone at the bottom, in thumb
-  reach; the slider stays with the answers it acts on.
+- The search bar sits at the top and scrolls with the page: with the slider
+  it is tall enough that pinning it would cost the answers a third of the
+  screen.
 - A clue over 14 characters steps the input down a size, so more of it stays
   in view.
 - Tap an answer card → copies the grid-form answer to clipboard and shows a
@@ -485,8 +484,9 @@ test/
 - **Live-as-you-type vs submit only.** Resolved: on everywhere, no toggle.
   The clue bank and corpus answer locally while you type; the Datamuse
   quota (100k/day) is far beyond what pauses on a phone can spend.
-- **Search box at the top or the bottom.** Top by default, bottom kept as a
-  setting for now; the call is to be made after living with both on a phone.
+- **Search box at the top or the bottom.** Resolved: top. The bottom dock
+  moved the clue away from the length slider it belongs with, and with search
+  as you type the input is where the thumb already is.
 - **Answer count.** Default cap 24; the prototype showed ~8. Tune after use.
 - **Proper-noun answers.** Datamuse tags them `prop`. Default: keep them,
   since crosswords love them, but sort slightly lower than common words.

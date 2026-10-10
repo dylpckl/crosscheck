@@ -2,7 +2,7 @@
  * The one sheet: settings on top, about and links below. Replaces the old
  * Settings and About views, so nothing here is more than a tap and a scroll away.
  */
-import { clearCache, clearHistory, getSettings, saveSettings, type SearchPosition, type Theme } from '../store';
+import { clearCache, clearHistory, getSettings, saveSettings, type Theme } from '../store';
 import { desk } from './layout';
 import { AUTHOR_URL, COMMIT, DONATE_URL, REPO_URL, type Shell } from './shell';
 
@@ -27,12 +27,6 @@ export function mountSheet(shell: Shell, onChange: () => void) {
       <div class="setting"><div class="text"><div class="label">Theme</div><div class="sub">System follows your phone.</div></div>
         <div class="seg" role="group" aria-label="Theme">${(['system', 'light', 'dark'] as Theme[])
           .map((t) => `<button data-theme="${t}" aria-pressed="${s.theme === t}">${t[0]!.toUpperCase() + t.slice(1)}</button>`)
-          .join('')}</div></div>
-      <div class="setting mobile-only"><div class="text"><div class="label">Search box</div><div class="sub">${
-        s.searchPosition === 'top' ? 'Under the app bar.' : 'Docked at the bottom, in thumb reach.'
-      }</div></div>
-        <div class="seg" role="group" aria-label="Search box position">${(['top', 'bottom'] as SearchPosition[])
-          .map((p) => `<button data-pos="${p}" aria-pressed="${s.searchPosition === p}">${p === 'top' ? 'Top' : 'Bottom'}</button>`)
           .join('')}</div></div>
       <div class="setting"><div class="text"><div class="label">Hide answers</div><div class="sub">Read the meaning first; tap to reveal the answers.</div></div>
         <button class="switch" role="switch" aria-checked="${s.hideAnswers}" data-key="hideAnswers" aria-label="Hide answers until revealed"></button></div>
@@ -60,7 +54,6 @@ export function mountSheet(shell: Shell, onChange: () => void) {
     const t = (e.target as HTMLElement).closest<HTMLElement>('button');
     if (!t) return;
     if (t.dataset.theme) { applyTheme(saveSettings({ theme: t.dataset.theme as Theme }).theme); render(); }
-    else if (t.dataset.pos) { saveSettings({ searchPosition: t.dataset.pos as SearchPosition }); render(); onChange(); }
     else if (t.dataset.key === 'hideAnswers') { saveSettings({ hideAnswers: !getSettings().hideAnswers }); render(); onChange(); }
     else if (t.dataset.action === 'clearHistory') { clearHistory(); onChange(); shell.toast('Recent searches cleared'); }
     else if (t.dataset.action === 'clearCache') { clearCache(); shell.toast('Cached results cleared'); }

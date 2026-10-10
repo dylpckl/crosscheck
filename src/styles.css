@@ -14,7 +14,6 @@
   --warn: #9A6A12;
   --bad: #A3362B;
   --scrim: rgba(27, 27, 27, .35);
-  --dock-fade: rgba(27, 27, 27, .07);
   /* Chrome sits a shade deeper than the page in both themes, which keeps the
      input the lightest surface either way and stops it merging with the bar. */
   --chrome: #E6DFD0;
@@ -41,7 +40,6 @@
   --warn: #D9A94A;
   --bad: #E07A6E;
   --scrim: rgba(0, 0, 0, .55);
-  --dock-fade: rgba(0, 0, 0, .4);
   --chrome: #121216;
   --chrome-edge: rgba(0, 0, 0, .6);
   --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.5);
@@ -132,29 +130,13 @@ body.locked { overflow: hidden; }
 /*
  * The clue and its length, in the chrome under the app bar. It scrolls with
  * the page: with the length control the bar is tall enough that pinning it
- * would cost the answers a third of a phone screen. The bottom-dock setting
- * is there for anyone who wants the input always in reach.
+ * would cost the answers a third of a phone screen.
  */
 .searchbar {
   background: var(--chrome); margin: 0 -18px; padding: 10px 18px 14px;
   box-shadow: 0 1px 0 var(--rule), 0 8px 16px -10px var(--chrome-edge);
 }
 
-/*
- * Bottom search: only the query docks, so the length control stays with the
- * answers it acts on. The dock is fixed, so it leaves the bar's flow entirely
- * and the view pads itself to keep the last row clear.
- */
-body.search-bottom .querybar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
-  width: 100%; max-width: 480px; margin: 0 auto;
-  background: var(--chrome); padding: 10px 18px calc(10px + var(--sab));
-  box-shadow: 0 -1px 0 var(--rule), 0 -10px 24px var(--dock-fade);
-}
-body.search-bottom .querybar > .ctl-label { display: none; }
-body.search-bottom .field input { font-size: 26px; }
-body.search-bottom .searchbar { padding: 12px 0 0; margin: 0; background: transparent; box-shadow: none; }
-body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 .search { display: flex; gap: 12px; align-items: flex-end; }
 /* Solve, trailing the clue. Wide screens drop it: Enter and search-as-you-type cover it there. */
 .go { flex: none; width: 44px; height: 44px; margin-bottom: 6px; border-radius: 12px; border: 0; background: var(--blue); color: var(--blue-ink); display: grid; place-items: center; }
@@ -450,7 +432,7 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
     gap: 36px 48px; align-items: start; align-content: start;
   }
   #out { display: contents; }
-  .mobile-only, .intro { display: none; }
+  .intro { display: none; }
 
   .searchbar { grid-area: search; margin: 0; padding: 0; background: none; box-shadow: none; display: flex; flex-direction: column; gap: 26px; }
   .querybar > .ctl-label { margin-bottom: 8px; }

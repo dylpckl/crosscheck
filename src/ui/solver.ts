@@ -264,8 +264,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   }
 
   function applySettings() {
-    // The bottom dock is a phone affordance; the desktop layout keeps the input in its column.
-    document.body.classList.toggle('search-bottom', getSettings().searchPosition === 'bottom' && !desk.matches);
     repaintAll();
   }
   /** Empty input means no results: drop them rather than leave a stale answer set. */
