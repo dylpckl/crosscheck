@@ -156,7 +156,20 @@ body.locked { overflow: hidden; }
 /* Length (every layout) and letters (wide screens) under the clue. */
 .controls { display: flex; flex-wrap: wrap; gap: 24px 32px; margin-top: 14px; }
 .lenctl, .letctl { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.letctl { display: none; }
+/* Letters you have: each one a tag. Sized for a thumb here; wide screens make them larger. */
+.tagbox {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 46px; padding: 4px 6px;
+  background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;
+}
+.tagbox:focus-within { border-color: var(--blue); }
+.tags { display: contents; }
+.tag {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 0 0 10px; border-radius: 8px;
+  background: var(--blue); color: var(--blue-ink); font: 700 17px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 15px; }
+.tagbox input { flex: 1; min-width: 80px; height: 34px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
+.tagbox input::placeholder { color: var(--ink-3); }
 .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
 .lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
 #len { width: 100%; height: 36px; margin: 0; accent-color: var(--blue); }
@@ -419,23 +432,13 @@ body.locked { overflow: hidden; }
   .go { display: none; }
 
   .controls { margin-top: 0; }
-  .letctl { display: flex; }
   .lenctl, .letctl { gap: 10px; }
   #len { height: 44px; }
   .ticks { margin-top: -6px; }
-  .tagbox {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px;
-    background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;
-  }
-  .tagbox:focus-within { border-color: var(--blue); }
-  .tags { display: contents; }
-  .tag {
-    display: inline-flex; align-items: center; gap: 2px; height: 40px; padding: 0 2px 0 12px; border-radius: 8px;
-    background: var(--blue); color: var(--blue-ink); font: 700 20px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  .tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 16px; }
-  .tagbox input { flex: 1; min-width: 90px; height: 40px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
-  .tagbox input::placeholder { color: var(--ink-3); }
+  .tagbox { gap: 8px; min-height: 56px; padding: 6px 8px; }
+  .tag { height: 40px; padding-left: 12px; font-size: 20px; }
+  .tag button { font-size: 16px; }
+  .tagbox input { min-width: 90px; height: 40px; }
 
   /*
    * Meaning: its own column, always open, no disclosure. Size containment

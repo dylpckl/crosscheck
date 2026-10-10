@@ -219,6 +219,8 @@ collapsed line, answers as cards that turn over, and Recent at the bottom.
 │  LENGTH           Any length │
 │  ●─────────────────────────  │  ← slider: Any, 3 … 8
 │  Any  3   4   5   6   7   8  │
+│  LETTERS YOU HAVE            │
+│  [N×][A×] Type a letter      │  ← tags; matching tiles light up
 ├──────────────────────────────┤
 │  MEANING ⌄                   │
 │  tide  n. The periodic rise… │  ← one line; tap to open the cards
@@ -259,8 +261,11 @@ length with no answers shows the hand-off naming that length rather than
 every length. A longer length arriving from a link or history means any
 length on a phone.
 
-**Letters** have no phone control. The parked pattern input stays in the
-markup but is never read; a pattern from history or a link becomes its length.
+**Letters you have** is the desktop tag box under the slider, sized for a
+thumb: each letter typed becomes a tag, Backspace removes the last. Letters
+re-rank and highlight, never filter or refetch. There is no positional
+pattern input; a pattern from history or a link becomes its length plus its
+known letters.
 
 **Answers** are cards, every one the same shape — tiles, then the gloss
 underneath — with the top published answer outlined in blue. Tiles are
@@ -331,11 +336,6 @@ One centered column, max 1080px. Same DOM as mobile, rearranged by CSS grid
 - **Length** is the same slider as the phone's, with the full track: Any,
   3–15. A length past 8 set here is dropped if the window narrows below the
   breakpoint, since the phone slider cannot show it.
-- **Letters you have** is a tag box: each letter typed becomes a tag,
-  Backspace removes the last. Letters are `SolveRequest.letters`: they
-  re-rank and highlight, never filter or refetch. Positional patterns have
-  no desktop control; one arriving from history or a link becomes its
-  length plus its known letters, and the hidden pattern input is never read.
 - **Search as you type** is debounced 250ms here rather than the phone's
   450ms. A typed search reaches history only after resting 2s on it.
 - **Meaning** is always open and holds its column from the start with a

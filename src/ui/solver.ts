@@ -49,10 +49,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       </div>
       <!-- Length and letters as separate controls under the clue. There is no
            positional-pattern input: the parser still understands one arriving
-           from history or a link (see setQuery), but only its length, and on
-           wide screens its known letters, can be shown, so only those apply.
-           Letters show on wide screens only; the slider is on every layout,
-           its track and ticks built from lengths() in setLength. -->
+           from history or a link (see setQuery), but only its length and its
+           known letters can be shown, so only those apply. The slider's track
+           and ticks are built from lengths() in setLength. -->
       <div class="controls">
         <label class="lenctl">
           <span class="ctl-head"><span class="ctl-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
@@ -77,9 +76,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   const len = $<HTMLInputElement>('len'), ticks = $('ticks'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
   const sections = { meaning: '', answers: '' };
 
-  /** The slider's exact length (null = any), and on wide screens the letters already known, in any order. */
+  /** The slider's exact length (null = any), and the letters already known, in any order. */
   let sliderLength: number | null = null;
-  let deskLetters = '';
+  let letters = '';
 
   /**
    * Letters can change while a search is in flight. Results arriving for the
@@ -103,7 +102,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     const built = buildRequest(q.value);
     if (isBuildError(built)) return built;
     if (sliderLength) built.length = sliderLength;
-    if (deskLetters) built.letters = deskLetters;
+    if (letters) built.letters = letters;
     return built;
   }
 
@@ -268,9 +267,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     paint();
   }
 
-  /** Recent pills show only the constraints this layout can honour: a length on its slider, letters on wide screens. */
+  /** Recent pills show only a length this layout's slider can honour. */
   function refreshHistory() {
-    $('recent').innerHTML = renderHistory(getHistory(), { lengths: lengths(), letters: desk.matches });
+    $('recent').innerHTML = renderHistory(getHistory(), { lengths: lengths() });
   }
 
   /** Letters changed: re-rank what we have instantly. Length changed: refetch. */
@@ -427,15 +426,15 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     onConstraintInput();
   });
 
-  function setLetters(letters: string) {
-    deskLetters = letters;
-    $('tags').innerHTML = [...letters]
+  function setLetters(next: string) {
+    letters = next;
+    $('tags').innerHTML = [...next]
       .map((c) => `<span class="tag">${c}<button type="button" data-untag="${c}" aria-label="Remove ${c}">×</button></span>`)
       .join('');
   }
   /** Letters only re-rank and highlight, so they apply instantly with no fetch. */
-  function changeLetters(letters: string) {
-    setLetters(letters);
+  function changeLetters(next: string) {
+    setLetters(next);
     onConstraintInput();
   }
   tagin.addEventListener('keydown', (e) => {
@@ -443,10 +442,10 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     if (/^[a-z]$/i.test(e.key)) {
       e.preventDefault();
       const c = e.key.toUpperCase();
-      if (!deskLetters.includes(c)) changeLetters(deskLetters + c);
-    } else if (e.key === 'Backspace' && !tagin.value && deskLetters) {
+      if (!letters.includes(c)) changeLetters(letters + c);
+    } else if (e.key === 'Backspace' && !tagin.value && letters) {
       e.preventDefault();
-      changeLetters(deskLetters.slice(0, -1));
+      changeLetters(letters.slice(0, -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       form.requestSubmit();
@@ -454,24 +453,21 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   });
   // Paste, autocorrect and on-screen keyboards arrive as input rather than keydown.
   tagin.addEventListener('input', () => {
-    const add = [...new Set(tagin.value.toUpperCase().replace(/[^A-Z]/g, ''))].filter((c) => !deskLetters.includes(c));
+    const add = [...new Set(tagin.value.toUpperCase().replace(/[^A-Z]/g, ''))].filter((c) => !letters.includes(c));
     tagin.value = '';
-    if (add.length) changeLetters(deskLetters + add.join(''));
+    if (add.length) changeLetters(letters + add.join(''));
   });
   $('tagbox').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-untag]');
-    if (b) changeLetters(deskLetters.replace(b.dataset.untag!, ''));
+    if (b) changeLetters(letters.replace(b.dataset.untag!, ''));
     tagin.focus();
   });
 
   desk.addEventListener('change', () => {
-    // The letters box vanishes below the breakpoint, and the slider shortens;
-    // don't leave a constraint applied that the controls no longer show.
+    // The slider shortens below the breakpoint; don't leave a length applied that it no longer shows.
     const before = sliderLength;
-    const hadLetters = Boolean(deskLetters);
     setLength(sliderLength);
-    if (!desk.matches && hadLetters) setLetters('');
-    if (before !== sliderLength || (!desk.matches && hadLetters)) onConstraintInput();
+    if (before !== sliderLength) onConstraintInput();
     refreshHistory();
     applySettings();
   });
@@ -527,12 +523,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     clearBtn.hidden = !query;
     fitClue();
     // There is no pattern input, so a constraint lands in the controls that own each part.
-    // A positional pattern becomes its length and its known letters, since positions can't
-    // show; on a phone, which has no letters box either, only the length survives.
+    // A positional pattern becomes its length and its known letters, since positions can't show.
     const c = parsePattern(pattern);
     const known = c.pattern ? [...new Set(c.pattern.replace(/\?/g, ''))].join('') : (c.letters ?? '');
     setLength(length ?? c.length ?? null);
-    setLetters(desk.matches ? known : '');
+    setLetters(known);
     if (submit) run();
   }
 
