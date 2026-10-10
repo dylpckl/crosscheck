@@ -214,7 +214,7 @@ collapsed line, answers as cards that turn over, and Recent at the bottom.
 ┌──────────────────────────────┐
 │  crosscheck                ⚙ │  ← app bar
 │  CLUE                        │
-│  tide           (serif, 34px)│  ← one input; the keyboard's Search key submits
+│  tide        (serif, 34px) 🔍│  ← one input, solve button trailing it
 │  ─────────────────────────── │
 │  LENGTH           Any length │
 │  ●─────────────────────────  │  ← slider: Any, 3 … 8
@@ -224,15 +224,12 @@ collapsed line, answers as cards that turn over, and Recent at the bottom.
 │  tide  n. The periodic rise… │  ← one line; tap to open the cards
 │  ─────────────────────────── │
 │ ┌──────────────────────────┐ │
-│ │ [N][E][A][P]  n. The tide│ │  ← top published answer outlined
-│ │               of least…  │ │
+│ │ [N][E][A][P]             │ │  ← top published answer outlined
+│ │ n. The tide of least…    │ │
 │ └──────────────────────────┘ │
 │ ┌──────────────────────────┐ │
-│ │ [E][B][B]  v. to flow ba…│ │
-│ └──────────────────────────┘ │
-│ ┌──────────────────────────┐ │
-│ │ [C][U][R][R][E][N][T]    │ │  ← from five letters the gloss
-│ │ n. a steady flow of…     │ │    goes underneath
+│ │ [E][B][B]                │ │  ← every card the same shape:
+│ │ v. to flow back or recede│ │    tiles, then the gloss
 │ └──────────────────────────┘ │
 │  RECENT                      │
 │  tide · ocean current · …    │  ← pills, one row, scrolls sideways
@@ -265,10 +262,9 @@ length on a phone.
 **Letters** have no phone control. The parked pattern input stays in the
 markup but is never read; a pattern from history or a link becomes its length.
 
-**Answers** are cards, the top published answer outlined in blue. Fill of up
-to four letters sits beside its gloss; from five, the gloss goes underneath,
-since five tiles leave a phone no room for a sentence. Tiles are solid, no
-border, bold monospace; nine letters and up shrink a size. There is no
+**Answers** are cards, every one the same shape — tiles, then the gloss
+underneath — with the top published answer outlined in blue. Tiles are
+solid, no border, bold monospace; nine letters and up shrink a size. There is no
 heading over the cards and no length number beside them. Related words keep
 their own labelled list under the published answers.
 
@@ -285,8 +281,8 @@ pills that scrolls sideways. Under the input, it outranked the answers.
 
 Behavior:
 
-- Submit with the keyboard's Search key (`enterkeyhint=search`). There is no
-  solve button. Search as you type is a setting, off by default on phones,
+- Submit with the solve button trailing the clue, or the keyboard's Search
+  key (`enterkeyhint=search`). Search as you type is a setting, off by default on phones,
   debounced 450ms once the query is 3 characters or more, online only.
 - The search bar scrolls with the page: with the slider it is tall enough
   that pinning it would cost the answers a third of the screen. The "Search

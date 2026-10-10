@@ -42,6 +42,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg>
           </button>
         </label>
+        <button class="go" type="submit" aria-label="Solve">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        </button>
       </form>
       <div class="form-error" id="formError" hidden></div>
       </div>

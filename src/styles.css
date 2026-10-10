@@ -153,7 +153,10 @@ body.search-bottom .querybar > .ctl-label { display: none; }
 body.search-bottom .field input { font-size: 26px; }
 body.search-bottom .searchbar { padding: 12px 0 0; margin: 0; background: transparent; box-shadow: none; }
 body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
-.search { display: flex; }
+.search { display: flex; gap: 12px; align-items: flex-end; }
+/* Solve, trailing the clue. Wide screens drop it: Enter and search-as-you-type cover it there. */
+.go { flex: none; width: 44px; height: 44px; margin-bottom: 6px; border-radius: 12px; border: 0; background: var(--blue); color: var(--blue-ink); display: grid; place-items: center; }
+.go svg { width: 20px; height: 20px; }
 .ctl-label { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
 .querybar > .ctl-label { display: block; margin-bottom: 2px; }
 /* The clue is set large in the display serif, on a rule rather than in a box: the same voice on every layout. */
@@ -277,17 +280,15 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 .examples button:active { background: var(--rule-2); }
 
 /*
- * Answers: cards, the top published answer set apart. Short fill sits beside
- * its gloss; from five letters the gloss goes underneath (.stack), since five
- * tiles leave a phone no room for a sentence. Desktop undoes the stacking.
+ * Answers: cards, every one the same shape, the top published answer set
+ * apart. On a phone the gloss goes under the tiles; desktop sets it beside.
  */
 .answers { display: flex; flex-direction: column; gap: 8px; }
 .row {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; align-items: center;
-  gap: 8px 14px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 14px; text-align: left;
+  display: grid; grid-template-columns: 1fr; grid-template-areas: "tiles" "gloss";
+  gap: 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 14px; text-align: left;
   background: transparent; width: 100%; color: inherit; user-select: none;
 }
-.row.stack { grid-template-columns: 1fr; grid-template-areas: "tiles" "gloss"; }
 .row:active { background: var(--rule-2); }
 .row.dim { opacity: .38; }
 .answers.published .row:first-child { border-color: var(--blue); background: var(--blue-tint); }
@@ -452,6 +453,7 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   .searchbar { grid-area: search; margin: 0; padding: 0; background: none; box-shadow: none; display: flex; flex-direction: column; gap: 26px; }
   .querybar > .ctl-label { margin-bottom: 8px; }
   .field input, .field.longq input { font-size: 44px; line-height: 1.25; padding: 4px 0 10px; }
+  .go { display: none; }
 
   .controls { margin-top: 0; }
   .letctl { display: flex; }
@@ -503,7 +505,7 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   #sec-answers { display: flex; flex-direction: column; }
   #sec-answers .subhead, .answers.published ~ .subhead + .answers { display: none; }
   #sec-answers .handoff { order: 1; padding: 18px 0 0; }
-  .row, .row.stack { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; gap: 10px 28px; padding: 14px 18px; cursor: pointer; }
+  .row { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; align-items: center; gap: 10px 28px; padding: 14px 18px; cursor: pointer; }
   .row:hover { background: var(--rule-2); }
   .row.dim { opacity: 1; }
   /* Room for six tiles, so glosses line up for the short fill that makes up most answers. */

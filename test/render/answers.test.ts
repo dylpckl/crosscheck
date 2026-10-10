@@ -37,11 +37,10 @@ describe('length constraint', () => {
 });
 
 describe('answer rows', () => {
-  it('sets the gloss beside short fill and under longer fill', () => {
+  it('gives every row the same shape, whatever its length', () => {
     const html = renderAnswers(ANSWERS, { query: 'x' });
     expect(html).toMatch(/class="row" [^>]*data-answer="SEER"/);
-    expect(html).toMatch(/class="row stack" [^>]*data-answer="NAHUM"/);
-    expect(html).toMatch(/class="row stack" [^>]*data-answer="SOOTHSAYER"/);
+    expect(html).toMatch(/class="row" [^>]*data-answer="SOOTHSAYER"/);
   });
 
   it('numbers each tile for the flip and keeps the length in the accessible name', () => {

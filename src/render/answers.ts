@@ -7,13 +7,11 @@ const BLANK_ROWS = [4, 5, 3, 6];
 
 /**
  * The board before there is anything on it: answer rows with their tiles
- * face down. Results turn them over (see the flip in ui/solver.ts). Rows on
- * the board stack their gloss under the tiles like a long answer would, so
- * the blank and the filled board share one outline.
+ * face down. Results turn them over (see the flip in ui/solver.ts).
  */
 export function renderBlankAnswers(): string {
   return `<section class="section blankrows" id="sec-answers" aria-hidden="true"><div class="answers">${BLANK_ROWS.map(
-    (n) => `<div class="row stack"><span class="tiles">${'<span class="tile"></span>'.repeat(n)}</span><span class="gloss"><i class="bar"></i></span></div>`,
+    (n) => `<div class="row"><span class="tiles">${'<span class="tile"></span>'.repeat(n)}</span><span class="gloss"><i class="bar"></i></span></div>`,
   ).join('')}</div></section>`;
 }
 
@@ -32,9 +30,6 @@ export interface AnswersOpts {
    */
   hidden?: boolean;
 }
-
-/** Tiles sit beside their gloss up to this many letters; longer fill stacks the gloss underneath on a phone. */
-const BESIDE_MAX = 4;
 
 /**
  * A published answer is one with evidence behind it: a clue bank hit, or a
@@ -113,8 +108,7 @@ function row(a: Answer, req: SolveRequest, ri = 0): string {
     })
     .join('');
   const pos = a.partOfSpeech?.[0];
-  const cls = ['row', a.length > BESIDE_MAX ? 'stack' : '', a.fitsPattern === false ? 'dim' : ''].filter(Boolean).join(' ');
-  return `<button class="${cls}" style="view-transition-name:a-${a.answer};--r:${ri}" data-answer="${a.answer}" data-display="${esc(a.display)}"
+  return `<button class="row${a.fitsPattern === false ? ' dim' : ''}" style="view-transition-name:a-${a.answer};--r:${ri}" data-answer="${a.answer}" data-display="${esc(a.display)}"
       aria-label="${esc(a.display)}, ${a.length} letters. Tap to copy, hold to look up.">
     <span class="tiles${a.length >= 9 ? ' long' : ''}">${tiles}</span>
     ${a.gloss ? `<span class="gloss">${pos ? `<span class="pos">${esc(pos)}.</span>` : ''}${esc(a.gloss)}</span>` : ''}
