@@ -19,10 +19,10 @@ export interface Solver {
 }
 
 /**
- * Lengths the slider offers after "Any". Wide screens get the full crossword
- * range. Phones stop at 8: in the shipped clue bank, 3 to 8 letters covers
- * 94% of published answers, and seven stops across a phone-width track is
- * what a thumb can land on; the long tail is better served by the hand-off.
+ * Lengths the length control offers after "Any": a slider on wide screens,
+ * a stepper on phones. Wide screens get the full crossword range. Phones
+ * stop at 8: in the shipped clue bank, 3 to 8 letters covers 94% of
+ * published answers, and the long tail is better served by the hand-off.
  */
 const LENGTHS_WIDE = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const LENGTHS_PHONE = [3, 4, 5, 6, 7, 8];
@@ -55,10 +55,12 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       <div class="controls">
         <div class="lenctl">
           <span class="ctl-head"><span class="ctl-label" id="length-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
-          <!-- Two faces of one control: a stepper on phones, where a slider's stops are too close for a thumb and its track too tall for the header; the slider on wide screens. -->
+          <!-- Two faces of one control: a stepper on phones, where a slider's stops are too close for a thumb and its track too tall for the header; the slider on wide screens.
+               The ends use aria-disabled rather than disabled, so a focused button keeps focus when it runs out of range. -->
           <div class="stepper" id="stepper" role="group" aria-labelledby="length-label">
-            <button type="button" data-step="-1" aria-label="Shorter">−</button><span class="stepval" id="stepval" aria-live="polite">Any</span><button type="button" data-step="1" aria-label="Longer">+</button>
+            <button type="button" id="shorter" aria-label="Shorter">−</button><span class="stepval" id="stepval">Any</span><button type="button" id="longer" aria-label="Longer">+</button>
           </div>
+          <span class="sr" id="lenlive" aria-live="polite"></span>
           <input id="len" type="range" min="0" max="${lengths().length}" step="1" value="0" aria-labelledby="length-label" aria-valuetext="Any length">
           <span class="ticks" id="ticks" aria-hidden="true"></span>
         </div>
@@ -77,7 +79,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   const $ = <T extends HTMLElement>(id: string) => view.querySelector<T>(`#${id}`)!;
   const q = $<HTMLInputElement>('q'), out = $('out'), form = $<HTMLFormElement>('form');
   const formError = $('formError'), clearBtn = $('clear');
-  const len = $<HTMLInputElement>('len'), ticks = $('ticks'), stepper = $('stepper'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
+  const len = $<HTMLInputElement>('len'), ticks = $('ticks'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
+  const shorter = $<HTMLButtonElement>('shorter'), longer = $<HTMLButtonElement>('longer');
   const sections = { meaning: '', answers: '' };
 
   /** The slider's exact length (null = any), and the letters already known, in any order. */
@@ -415,16 +418,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     if (ticks.childElementCount !== stops.length + 1) ticks.innerHTML = `<span>Any</span>${stops.map((s) => `<span>${s}</span>`).join('')}`;
     const at = n === null ? 0 : stops.indexOf(n) + 1;
     len.value = String(at);
-    const label = n === null ? 'Any length' : `${n} letters`;
-    $('lenval').textContent = label;
+    $('lenval').textContent = lengthLabel(n);
     $('stepval').textContent = n === null ? 'Any' : String(n);
-    len.setAttribute('aria-valuetext', label);
+    len.setAttribute('aria-valuetext', lengthLabel(n));
     ticks.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === at));
-    stepper.querySelectorAll<HTMLButtonElement>('button').forEach((b) => { b.disabled = at + Number(b.dataset.step) < 0 || at + Number(b.dataset.step) > stops.length; });
+    shorter.setAttribute('aria-disabled', String(at === 0));
+    longer.setAttribute('aria-disabled', String(at === stops.length));
   }
-  /** The length moved, by either face of the control. */
+  const lengthLabel = (n: number | null) => (n === null ? 'Any length' : `${n} letters`);
+  /** Where the control stands: 0 for Any, else the stop's position, from the state rather than either face. */
+  const lengthAt = () => (sliderLength === null ? 0 : lengths().indexOf(sliderLength) + 1);
+  /** The length moved, by either face of the control. Only a move the reader made is announced. */
   function onLengthInput(at: number) {
     setLength(lengths()[at - 1] ?? null);
+    $('lenlive').textContent = lengthLabel(sliderLength);
     // Filter what is on screen now; onConstraintInput refetches for the new length after a pause.
     // With nothing searched yet there is nothing to filter, and the blank board stays as it is.
     if (current || live) {
@@ -434,10 +441,8 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     onConstraintInput();
   }
   len.addEventListener('input', () => onLengthInput(Number(len.value)));
-  stepper.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-step]');
-    if (b) onLengthInput(Number(len.value) + Number(b.dataset.step));
-  });
+  shorter.addEventListener('click', () => { if (lengthAt() > 0) onLengthInput(lengthAt() - 1); });
+  longer.addEventListener('click', () => { if (lengthAt() < lengths().length) onLengthInput(lengthAt() + 1); });
 
   function setLetters(next: string) {
     letters = next;

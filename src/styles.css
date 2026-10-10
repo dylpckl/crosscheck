@@ -159,10 +159,12 @@ body.locked { overflow: hidden; }
 .lenctl, .letctl { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .lenctl { flex: none; }
 .letctl { flex: 1; }
-.stepper { display: inline-flex; align-items: center; height: 46px; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; overflow: hidden; }
-.stepper button { width: 42px; height: 100%; border: 0; background: transparent; color: var(--blue); font-size: 22px; line-height: 1; padding: 0; }
-.stepper button:disabled { color: var(--dim); cursor: default; }
-.stepper button:active:not(:disabled) { background: var(--rule-2); }
+.stepper { display: inline-flex; align-items: center; height: 46px; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; }
+.stepper button { width: 42px; height: 100%; border: 0; border-radius: 10px; background: transparent; color: var(--blue); font-size: 22px; line-height: 1; padding: 0; }
+/* The ring is drawn inside the button, so the box's rounded edge cannot cut it off. */
+.stepper button:focus-visible { outline-offset: -3px; }
+.stepper button[aria-disabled="true"] { color: var(--dim); cursor: default; }
+.stepper button:active:not([aria-disabled="true"]) { background: var(--rule-2); }
 .stepval { min-width: 40px; text-align: center; font-size: 16px; font-variant-numeric: tabular-nums; }
 .lenval, #len, .ticks { display: none; }
 /* Letters you have: each one a tag. Sized for a thumb here; wide screens make them larger. */
@@ -179,8 +181,11 @@ body.locked { overflow: hidden; }
 .tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 15px; }
 .tagbox input { flex: 1; min-width: 80px; height: 34px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
 .tagbox input::placeholder { color: var(--ink-3); }
-/* Once there is a tag, the placeholder has done its job; on a phone it would only clip beside the tags. */
-.tagbox:has(.tag) input::placeholder { color: transparent; }
+/* On a phone, once there is a tag the placeholder would only clip beside it: drop it and the width it reserved. */
+@media (max-width: 1023px) {
+  .tagbox:has(.tag) input { min-width: 44px; }
+  .tagbox:has(.tag) input::placeholder { color: transparent; }
+}
 .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
 .lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
 #len { width: 100%; height: 36px; margin: 0; accent-color: var(--blue); }

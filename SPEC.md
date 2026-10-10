@@ -207,8 +207,9 @@ service worker.
 
 Single screen, portrait-first, everything reachable with one thumb. Phones
 and wide screens speak with one voice, and §5b only widens it: the clue set
-large in the display serif, a length slider under it, Meaning as one
-collapsed line, answers as cards that turn over, and Recent at the bottom.
+large in the display serif, a length control under it (a stepper here, a
+slider on wide screens), Meaning as one collapsed line, answers as cards
+that turn over, and Recent at the bottom.
 
 ```
 ┌──────────────────────────────┐
@@ -332,9 +333,9 @@ One centered column, max 1080px. Same DOM as mobile, rearranged by CSS grid
 └─────────────────────────────────────────────────────────┘
 ```
 
-- **Length** is the same slider as the phone's, with the full track: Any,
-  3–15. A length past 8 set here is dropped if the window narrows below the
-  breakpoint, since the phone slider cannot show it.
+- **Length** is a slider rather than the phone's stepper, with the full
+  range: Any, 3–15. A length past 8 set here is dropped if the window
+  narrows below the breakpoint, since the phone stepper cannot show it.
 - **Search as you type** is debounced 250ms here rather than the phone's
   450ms. A typed search reaches history only after resting 2s on it.
 - **Meaning** is always open and holds its column from the start with a
