@@ -163,27 +163,6 @@ body.locked { overflow: hidden; }
 .ticks { display: flex; justify-content: space-between; margin-top: -4px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 /* Colour only: a bolder label would be wider and nudge its neighbours. */
 .ticks .on { color: var(--blue); }
-/* The phone slider stops at 8 (LENGTHS_PHONE in ui/solver.ts); the ticks past it are not drawn. */
-.ticks span:nth-child(n+8) { display: none; }
-.constraints { display: flex; align-items: center; gap: 10px; margin-top: 8px; min-height: 38px; }
-.chip {
-  border: 1px solid var(--rule); background: transparent; color: var(--ink-2); border-radius: 999px;
-  padding: 6px 12px; font-size: 13px; line-height: 1; display: inline-flex; align-items: center; gap: 6px; min-height: 34px;
-}
-.chip[aria-pressed="true"] { background: var(--blue-tint); border-color: var(--blue); color: var(--blue); }
-.pattern {
-  display: flex; align-items: center; gap: 8px; flex: 0 1 220px; min-width: 150px; height: 38px;
-  border: 1.5px solid var(--rule); border-radius: 10px; background: var(--paper); padding: 0 8px 0 10px; color: var(--ink-3);
-}
-.pattern:focus-within { border-color: var(--blue); color: var(--blue); }
-.pattern input {
-  flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink);
-  font: 500 15px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .18em; text-transform: uppercase;
-}
-.pattern input::placeholder { font: 14px -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
-.constraints .hint { font-size: 12px; color: var(--ink-3); flex: 1; min-width: 0; }
-.constraints .hint b { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
-.constraints .hint.err { color: var(--bad); }
 .form-error { color: var(--bad); font-size: 13px; margin-top: 6px; }
 
 /* ---------- sections ---------- */
@@ -237,8 +216,8 @@ body.locked { overflow: hidden; }
 #sec-meaning { margin-top: 16px; }
 /* Meaning leads and collapses to one line; the divider marks where answers begin. */
 #sec-answers { border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 20px; }
-/* The cards speak for themselves; no heading over them on any layout. */
-#sec-answers > h2 { display: none; }
+/* The cards speak for themselves; the heading, with its count and cache note, is for screen readers only. */
+#sec-answers > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; }
 .subhead { margin: 20px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .subhead .count { font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 /* The exit the reader would take anyway, offered before they have to go looking for it. */
@@ -444,7 +423,6 @@ body.locked { overflow: hidden; }
   .lenctl, .letctl { gap: 10px; }
   #len { height: 44px; }
   .ticks { margin-top: -6px; }
-  .ticks span:nth-child(n+8) { display: inline; }
   .tagbox {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px;
     background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;

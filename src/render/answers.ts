@@ -45,13 +45,15 @@ export function renderAnswers(answers: Answer[], req: SolveRequest, opts: Answer
   const related = filtered.filter((a) => !isPublished(a));
   const allPublished = answers.filter(isPublished);
 
+  // The heading is for screen readers: the cards speak for themselves on screen, but the count and the cache note are worth hearing.
   const label = active ? `${published.length} of ${allPublished.length}` : countLabel(allPublished, req);
   const head = `<h2>Answers ${allPublished.length ? `<span class="count">${label}</span>` : ''}${opts.fromCache ? '<span class="pill">Cached</span>' : ''}</h2>`;
 
-  if (opts.hidden && answers.length) {
-    const n = allPublished.length || answers.length;
+  // Spoiler mode hides what would show: with a length set, that is the answers of that length, and none means the hand-off shows as normal.
+  if (opts.hidden && filtered.length) {
+    const n = published.length || filtered.length;
     return `<section class="section" id="sec-answers">${head}<div class="spoiler">
-      <button type="button" class="reveal-btn" data-reveal-answers>Reveal ${n} ${allPublished.length ? 'answer' : 'related word'}${n === 1 ? '' : 's'}</button>
+      <button type="button" class="reveal-btn" data-reveal-answers>Reveal ${n} ${published.length ? 'answer' : 'related word'}${n === 1 ? '' : 's'}</button>
     </div></section>`;
   }
 
@@ -80,8 +82,8 @@ function handoff(query: string, length: number | null): string {
   </div>`;
 }
 
+/** With no length set, the count; with letters, how many answers hold all of them. A length set is labelled by the caller. */
 function countLabel(answers: Answer[], req: SolveRequest): string {
-  if (req.pattern || req.length) return `${answers.filter((a) => a.fitsPattern === true).length} of ${answers.length} fit`;
   if (req.letters) {
     const all = answers.filter((a) => a.letterHits === req.letters!.length).length;
     return `${all} of ${answers.length} have ${req.letters.split('').join(' ')}`;

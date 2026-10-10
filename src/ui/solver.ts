@@ -4,7 +4,6 @@ import { renderAnswers, renderBlankAnswers } from '../render/answers';
 import { renderEmpty } from '../render/empty';
 import { renderHistory } from '../render/history';
 import { renderBlankMeaning, renderMeaning } from '../render/meaning';
-import { esc } from '../render/util';
 import { rankAnswers } from '../rank';
 import { buildRequest, isBuildError, solve } from '../solve';
 import { getHistory, getSettings, pushHistory } from '../store';
@@ -48,28 +47,17 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       </form>
       <div class="form-error" id="formError" hidden></div>
       </div>
-      <!-- Letters/pattern input, parked: hidden in the UI while the idea is
-           reconsidered. The parser, ranking and highlighting all still work,
-           so removing this attribute brings it back. -->
-      <div class="constraints" hidden>
-        <label class="pattern">
-          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="1" y="1" width="4" height="4"/><rect x="7" y="1" width="4" height="4"/><rect x="1" y="7" width="4" height="4"/><rect x="7" y="7" width="4" height="4"/></svg>
-          <input id="p" type="text" placeholder="Letters you have" aria-label="Letters you have, or a ? pattern" maxlength="30" autocapitalize="characters" autocomplete="off" spellcheck="false">
-          <button type="button" class="clear" id="pclear" aria-label="Clear letters" hidden>
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg>
-          </button>
-        </label>
-        <span class="hint" id="phint"></span>
-      </div>
-      <!-- Length and letters as separate controls under the clue. Both feed
-           the same request fields the parked pattern input above would.
+      <!-- Length and letters as separate controls under the clue. There is no
+           positional-pattern input: the parser still understands one arriving
+           from history or a link (see setQuery), but only its length, and on
+           wide screens its known letters, can be shown, so only those apply.
            Letters show on wide screens only; the slider is on every layout,
-           with the phone's ticks past 8 hidden in CSS. -->
+           its track and ticks built from lengths() in setLength. -->
       <div class="controls">
         <label class="lenctl">
           <span class="ctl-head"><span class="ctl-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
           <input id="len" type="range" min="0" max="${lengths().length}" step="1" value="0" aria-valuetext="Any length">
-          <span class="ticks" id="ticks" aria-hidden="true"><span class="on">Any</span>${LENGTHS_WIDE.map((n) => `<span>${n}</span>`).join('')}</span>
+          <span class="ticks" id="ticks" aria-hidden="true"></span>
         </label>
         <div class="letctl">
           <span class="ctl-label" id="letters-label">Letters you have</span>
@@ -84,9 +72,9 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     <div id="recent"></div>`;
 
   const $ = <T extends HTMLElement>(id: string) => view.querySelector<T>(`#${id}`)!;
-  const q = $<HTMLInputElement>('q'), p = $<HTMLInputElement>('p'), out = $('out'), form = $<HTMLFormElement>('form');
-  const phint = $('phint'), formError = $('formError'), clearBtn = $('clear'), pclear = $<HTMLButtonElement>('pclear');
-  const len = $<HTMLInputElement>('len'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
+  const q = $<HTMLInputElement>('q'), out = $('out'), form = $<HTMLFormElement>('form');
+  const formError = $('formError'), clearBtn = $('clear');
+  const len = $<HTMLInputElement>('len'), ticks = $('ticks'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
   const sections = { meaning: '', answers: '' };
 
   /** The slider's exact length (null = any), and on wide screens the letters already known, in any order. */
@@ -109,11 +97,10 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
 
   /**
    * The request as the inputs stand. The visible controls are the whole
-   * constraint: the parked pattern input is never read, so nothing can apply
-   * that the reader can't see.
+   * constraint, so nothing can apply that the reader can't see.
    */
   function request(): ReturnType<typeof buildRequest> {
-    const built = buildRequest(q.value, '');
+    const built = buildRequest(q.value);
     if (isBuildError(built)) return built;
     if (sliderLength) built.length = sliderLength;
     if (deskLetters) built.letters = deskLetters;
@@ -281,28 +268,13 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     paint();
   }
 
+  /** Recent pills show only the constraints this layout can honour: a length on its slider, letters on wide screens. */
   function refreshHistory() {
-    $('recent').innerHTML = renderHistory(getHistory());
+    $('recent').innerHTML = renderHistory(getHistory(), { lengths: lengths(), letters: desk.matches });
   }
 
-  function updateHint() {
-    const c = parsePattern(p.value);
-    pclear.hidden = !p.value;
-    phint.classList.toggle('err', Boolean(c.error));
-    phint.innerHTML = c.error
-      ? esc(c.error)
-      : c.pattern
-        ? `<b>${c.length}</b> letters, by position`
-        : c.length
-          ? `<b>${c.length}</b> letters long`
-          : c.letters
-            ? 'any order · use ? for positions'
-            : '';
-  }
-
-  /** Letters changed: re-rank what we have instantly. Pattern/length changed: refetch. */
+  /** Letters changed: re-rank what we have instantly. Length changed: refetch. */
   function onConstraintInput() {
-    updateHint();
     const built = request();
     if (isBuildError(built)) return;
     // What the controls act on: the finished result, else the partial, else (null) a search still in flight.
@@ -431,15 +403,18 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
 
   // ---- constraints ----
   function setLength(n: number | null) {
+    const stops = lengths();
     // Only lengths this layout's slider can show; anything else (say ?p=20 in a link) means any length.
-    if (n !== null && !lengths().includes(n)) n = null;
+    if (n !== null && !stops.includes(n)) n = null;
     sliderLength = n;
-    len.max = String(lengths().length);
-    len.value = String(n === null ? 0 : lengths().indexOf(n) + 1);
+    // Track and tick labels come from the same list, so they cannot drift apart across layouts.
+    len.max = String(stops.length);
+    if (ticks.childElementCount !== stops.length + 1) ticks.innerHTML = `<span>Any</span>${stops.map((s) => `<span>${s}</span>`).join('')}`;
+    len.value = String(n === null ? 0 : stops.indexOf(n) + 1);
     const label = n === null ? 'Any length' : `${n} letters`;
     $('lenval').textContent = label;
     len.setAttribute('aria-valuetext', label);
-    $('ticks').querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === Number(len.value)));
+    ticks.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === Number(len.value)));
   }
   len.addEventListener('input', () => {
     setLength(lengths()[Number(len.value) - 1] ?? null);
@@ -493,20 +468,20 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     // The letters box vanishes below the breakpoint, and the slider shortens;
     // don't leave a constraint applied that the controls no longer show.
     const before = sliderLength;
+    const hadLetters = Boolean(deskLetters);
     setLength(sliderLength);
-    if (!desk.matches && deskLetters) setLetters('');
-    if (before !== sliderLength || (!desk.matches && deskLetters)) onConstraintInput();
+    if (!desk.matches && hadLetters) setLetters('');
+    if (before !== sliderLength || (!desk.matches && hadLetters)) onConstraintInput();
+    refreshHistory();
     applySettings();
   });
   clearBtn.addEventListener('click', () => {
     q.value = '';
     clearBtn.hidden = true;
+    fitClue();
     clearResults();
     q.focus();
   });
-  pclear.addEventListener('click', () => { p.value = ''; onConstraintInput(); p.focus(); });
-  p.addEventListener('input', onConstraintInput);
-  p.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); } });
 
   // tap = copy, hold = chain lookup
   let holdTimer: number | undefined, held = false;
@@ -551,7 +526,6 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     q.value = query;
     clearBtn.hidden = !query;
     fitClue();
-    p.value = pattern;
     // There is no pattern input, so a constraint lands in the controls that own each part.
     // A positional pattern becomes its length and its known letters, since positions can't
     // show; on a phone, which has no letters box either, only the length survives.
@@ -559,12 +533,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     const known = c.pattern ? [...new Set(c.pattern.replace(/\?/g, ''))].join('') : (c.letters ?? '');
     setLength(length ?? c.length ?? null);
     setLetters(desk.matches ? known : '');
-    updateHint();
     if (submit) run();
   }
 
+  setLength(null);
   refreshHistory();
-  updateHint();
   applySettings();
   paint();
   return { setQuery, refreshHistory, applySettings };

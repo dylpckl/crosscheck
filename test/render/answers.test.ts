@@ -194,3 +194,16 @@ describe('meaning disclosure', () => {
     expect(html.indexOf('Search elsewhere')).toBeGreaterThan(html.indexOf('bodywrap'));
   });
 });
+
+describe('spoiler mode with a length set', () => {
+  it('counts only what the length would show', () => {
+    expect(renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 4, hidden: true })).toContain('Reveal 2 answers');
+    expect(renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 5, hidden: true })).toContain('Reveal 1 related word<');
+  });
+
+  it('has nothing to hide when the length matches nothing, so the hand-off shows', () => {
+    const html = renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 9, hidden: true });
+    expect(html).not.toContain('data-reveal-answers');
+    expect(html).toContain('9 letters');
+  });
+});

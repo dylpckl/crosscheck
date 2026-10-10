@@ -3,7 +3,6 @@
  * Settings and About views, so nothing here is more than a tap and a scroll away.
  */
 import { clearCache, clearHistory, getSettings, saveSettings, type Theme } from '../store';
-import { desk } from './layout';
 import { AUTHOR_URL, COMMIT, DONATE_URL, REPO_URL, type Shell } from './shell';
 
 export function applyTheme(theme: Theme) {
@@ -60,6 +59,5 @@ export function mountSheet(shell: Shell, onChange: () => void) {
     else if (t.dataset.action === 'diagnostics') { shell.openSheet(false); shell.show('diagnostics'); }
   });
 
-  desk.addEventListener('change', render);
   render();
 }
