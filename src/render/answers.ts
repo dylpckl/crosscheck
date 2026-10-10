@@ -2,18 +2,12 @@ import type { Answer, ProviderError, SolveRequest } from '../contract';
 import { googleClueUrl } from '../providers/links';
 import { esc, extIcon } from './util';
 
-export function skeletonAnswers(): string {
-  return `<section class="section" id="sec-answers"><h2>Answers</h2>
-    <div class="sk"></div><div class="sk short"></div><div class="sk"></div><div class="sk short"></div><div class="sk"></div><div class="sk short"></div>
-  </section>`;
-}
-
-/** Lengths of the blank rows on the empty desktop board: a few plausible shapes of fill. */
+/** Lengths of the blank rows on the empty board: a few plausible shapes of fill. */
 const BLANK_ROWS = [4, 5, 3, 6];
 
 /**
- * The desktop board before there is anything on it: answer rows with their
- * tiles face down. Results turn them over (see AnswersOpts.flip).
+ * The board before there is anything on it: answer rows with their tiles
+ * face down. Results turn them over (see the flip in ui/solver.ts).
  */
 export function renderBlankAnswers(): string {
   return `<section class="section blankrows" id="sec-answers" aria-hidden="true"><div class="answers">${BLANK_ROWS.map(
@@ -25,30 +19,16 @@ export interface AnswersOpts {
   fromCache?: boolean;
   error?: ProviderError;
   /**
-   * Show only answers of this length. A view-time filter over answers already
-   * fetched, so it costs no request; a length with no answers is ignored.
+   * Show only answers of this length. The slider is a constraint the reader
+   * set, so it applies strictly: a length with no answers shows none, and
+   * the hand-off names the length, rather than quietly showing every length.
    */
   lengthFilter?: number | null;
   /**
-   * Spoiler mode: keep everything below the heading behind a tap. Lengths
-   * are hints too, so the filter row hides with the rows. Nothing to hide
-   * (no answers at all) renders as normal — a hand-off is not a spoiler.
+   * Spoiler mode: keep everything below the heading behind a tap. Nothing to
+   * hide (no answers at all) renders as normal — a hand-off is not a spoiler.
    */
   hidden?: boolean;
-  /**
-   * Apply lengthFilter even when no answer has that length. The desktop
-   * slider is a constraint the reader set, so an empty result is the honest
-   * answer; the mobile chips are picked from lengths present, so they never
-   * need it.
-   */
-  strictLength?: boolean;
-}
-
-/** Lengths present in the answers, ascending, with how many of each. */
-export function lengthCounts(answers: Answer[]): [number, number][] {
-  const counts = new Map<number, number>();
-  for (const a of answers) counts.set(a.length, (counts.get(a.length) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => a[0] - b[0]);
 }
 
 /**
@@ -59,33 +39,23 @@ export function lengthCounts(answers: Answer[]): [number, number][] {
 const isPublished = (a: Answer) => (a.priority ?? 0) >= 1;
 
 export function renderAnswers(answers: Answer[], req: SolveRequest, opts: AnswersOpts = {}): string {
-  const counts = lengthCounts(answers);
-  // Ignore a filter nothing matches, so a stale selection can't empty the list.
-  const active = opts.strictLength || counts.some(([n]) => n === opts.lengthFilter) ? opts.lengthFilter ?? null : null;
+  const active = opts.lengthFilter ?? null;
   const filtered = active ? answers.filter((a) => a.length === active) : answers;
   const published = filtered.filter(isPublished);
   const related = filtered.filter((a) => !isPublished(a));
   const allPublished = answers.filter(isPublished);
 
+  // The heading is for screen readers: the cards speak for themselves on screen, but the count and the cache note are worth hearing.
   const label = active ? `${published.length} of ${allPublished.length}` : countLabel(allPublished, req);
   const head = `<h2>Answers ${allPublished.length ? `<span class="count">${label}</span>` : ''}${opts.fromCache ? '<span class="pill">Cached</span>' : ''}</h2>`;
 
-  if (opts.hidden && answers.length) {
-    const n = allPublished.length || answers.length;
+  // Spoiler mode hides what would show: with a length set, that is the answers of that length, and none means the hand-off shows as normal.
+  if (opts.hidden && filtered.length) {
+    const n = published.length || filtered.length;
     return `<section class="section" id="sec-answers">${head}<div class="spoiler">
-      <button type="button" class="reveal-btn" data-reveal-answers>Reveal ${n} ${allPublished.length ? 'answer' : 'related word'}${n === 1 ? '' : 's'}</button>
+      <button type="button" class="reveal-btn" data-reveal-answers>Reveal ${n} ${published.length ? 'answer' : 'related word'}${n === 1 ? '' : 's'}</button>
     </div></section>`;
   }
-
-  // One length is no choice, so the row only earns its space with two or more.
-  // Counts live in the label rather than on screen: two bare numbers side by
-  // side read as one ambiguous pair. "All" is the filter's visible off switch.
-  const chips = counts.length > 1
-    ? `<div class="lenrow"><span class="lenlabel">Length</span><div class="lens"><div class="lensbar" role="group" aria-label="Filter by length">
-        <button type="button" data-len="0" aria-pressed="${active === null}">All</button>${counts
-          .map(([n, k]) => `<button type="button" data-len="${n}" aria-pressed="${n === active}" aria-label="${n} letters, ${k} answer${k === 1 ? '' : 's'}">${n}</button>`)
-          .join('')}</div></div></div>`
-    : '';
 
   const error = opts.error && !answers.length ? `<div class="notice bad">${esc(opts.error.message)}.</div>` : '';
   const main = published.length
@@ -95,7 +65,7 @@ export function renderAnswers(answers: Answer[], req: SolveRequest, opts: Answer
     ? `<h3 class="subhead">Related words <span class="count">${related.length}</span></h3>
        <div class="answers">${related.map((a, i) => row(a, req, published.length + i)).join('')}</div>`
     : '';
-  return `<section class="section" id="sec-answers">${head}${chips}${error}${main}${rest}</section>`;
+  return `<section class="section" id="sec-answers">${head}${error}${main}${rest}</section>`;
 }
 
 /**
@@ -112,8 +82,8 @@ function handoff(query: string, length: number | null): string {
   </div>`;
 }
 
+/** With no length set, the count; with letters, how many answers hold all of them. A length set is labelled by the caller. */
 function countLabel(answers: Answer[], req: SolveRequest): string {
-  if (req.pattern || req.length) return `${answers.filter((a) => a.fitsPattern === true).length} of ${answers.length} fit`;
   if (req.letters) {
     const all = answers.filter((a) => a.letterHits === req.letters!.length).length;
     return `${all} of ${answers.length} have ${req.letters.split('').join(' ')}`;
@@ -142,7 +112,7 @@ function row(a: Answer, req: SolveRequest, ri = 0): string {
   const pos = a.partOfSpeech?.[0];
   return `<button class="row${a.fitsPattern === false ? ' dim' : ''}" style="view-transition-name:a-${a.answer};--r:${ri}" data-answer="${a.answer}" data-display="${esc(a.display)}"
       aria-label="${esc(a.display)}, ${a.length} letters. Tap to copy, hold to look up.">
-    <span class="tiles${a.length >= 9 ? ' long' : ''}">${tiles}<span class="len">${a.length}</span></span>
+    <span class="tiles${a.length >= 9 ? ' long' : ''}">${tiles}</span>
     ${a.gloss ? `<span class="gloss">${pos ? `<span class="pos">${esc(pos)}.</span>` : ''}${esc(a.gloss)}</span>` : ''}
   </button>`;
 }

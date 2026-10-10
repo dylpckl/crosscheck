@@ -1,0 +1,28 @@
+import { describe, expect, it } from 'vitest';
+import { renderHistory } from '../../src/render/history';
+
+const PHONE = { lengths: [3, 4, 5, 6, 7, 8] };
+const WIDE = { lengths: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] };
+const at = Date.now();
+
+describe('recent pills', () => {
+  it('shows a stored length only where the slider can reach it', () => {
+    const list = [{ query: 'scud', pattern: 'S?????????E', at }];
+    expect(renderHistory(list, PHONE)).not.toContain('<code>11</code>');
+    expect(renderHistory(list, PHONE)).not.toContain('data-len');
+    expect(renderHistory(list, WIDE)).toContain('<code>11</code>');
+    expect(renderHistory(list, WIDE)).toContain('data-len="11"');
+  });
+
+  it('shows stored letters, and the known letters of a pattern, on every layout', () => {
+    expect(renderHistory([{ query: 'tide', letters: 'TD', at }], PHONE)).toContain('<code>TD</code>');
+    expect(renderHistory([{ query: 'scud', pattern: 'S?????????E', at }], PHONE)).toContain('<code>SE</code>');
+  });
+
+  it('keeps the pattern on the pill for setQuery to reduce, whatever it shows', () => {
+    const html = renderHistory([{ query: 'scud', pattern: 'SC?D?', at }], PHONE);
+    expect(html).toContain('data-p="SC?D?"');
+    expect(html).toContain('<code>5</code><code>SCD</code>');
+    expect(html).toContain('aria-label="scud, 5 letters, with S C D"');
+  });
+});

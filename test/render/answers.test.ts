@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Answer } from '../../src/contract';
-import { lengthCounts, renderAnswers } from '../../src/render/answers';
+import { renderAnswers } from '../../src/render/answers';
 import { renderMeaning } from '../../src/render/meaning';
 
 const make = (display: string, score = 1, priority = 0): Answer => {
@@ -10,54 +10,44 @@ const make = (display: string, score = 1, priority = 0): Answer => {
 /** Two published answers, three associations. */
 const ANSWERS = [make('seer', 1, 1), make('ezra', 1, 1), make('nahum'), make('samuel'), make('soothsayer')];
 
-describe('length chips', () => {
-  it('counts only the lengths present, ascending', () => {
-    expect(lengthCounts(ANSWERS)).toEqual([[4, 2], [5, 1], [6, 1], [10, 1]]);
-  });
-
-  it('renders one segment per length, plus All, with counts kept in the label', () => {
+describe('length constraint', () => {
+  it('shows every length when none is set', () => {
     const html = renderAnswers(ANSWERS, { query: 'x' });
-    expect(html).toContain('data-len="0" aria-pressed="true">All');
-    expect(html).toContain('data-len="4"');
-    expect(html).toContain('data-len="10"');
-    expect(html).not.toContain('data-len="7"');
-    // The count is announced but never drawn, so two numbers can't be confused.
-    expect(html).toContain('aria-label="4 letters, 2 answers"');
-    expect(html).toContain('aria-label="5 letters, 1 answer"');
-    expect(html).not.toMatch(/>4<\/b>/);
+    expect(html).toContain('data-answer="SEER"');
+    expect(html).toContain('data-answer="SOOTHSAYER"');
+    expect(html).toContain('<span class="count">2</span>');
   });
 
-  it('filters the list and updates the count when a length is picked', () => {
+  it('keeps only answers of the chosen length and says how many of the published ones that is', () => {
     const html = renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 4 });
     // The count is of published answers: both four-letter ones are.
     expect(html).toContain('2 of 2');
     expect(html).toContain('data-answer="SEER"');
     expect(html).toContain('data-answer="EZRA"');
     expect(html).not.toContain('data-answer="NAHUM"');
-    expect(html).toContain('data-len="4" aria-pressed="true"');
-    expect(html).toContain('data-len="0" aria-pressed="false">All');
   });
 
-  it('ignores a length nothing matches and falls back to All', () => {
+  it('is strict: a length nothing matches shows no answers, and the hand-off names the length', () => {
+    // The slider is a constraint the reader set, so an empty result is the honest one.
     const html = renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 9 });
-    expect(html).toContain('data-answer="NAHUM"');
-    expect(html).toContain('data-len="0" aria-pressed="true">All');
-    expect(html).not.toContain('data-len="4" aria-pressed="true"');
-  });
-
-  it('with strictLength, a length nothing matches shows no answers instead of every length', () => {
-    const html = renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 9, strictLength: true });
     expect(html).not.toContain('data-answer=');
     expect(html).toContain('class="handoff"');
     expect(html).toContain('9 letters');
   });
+});
 
-  it('hides the row when every answer is the same length', () => {
-    expect(renderAnswers([make('seer'), make('ezra')], { query: 'x' })).not.toContain('class="lens"');
+describe('answer rows', () => {
+  it('gives every row the same shape, whatever its length', () => {
+    const html = renderAnswers(ANSWERS, { query: 'x' });
+    expect(html).toMatch(/class="row" [^>]*data-answer="SEER"/);
+    expect(html).toMatch(/class="row" [^>]*data-answer="SOOTHSAYER"/);
   });
 
-  it('labels the row so two numbers are never left to speak for themselves', () => {
-    expect(renderAnswers(ANSWERS, { query: 'x' })).toContain('class="lenlabel">Length');
+  it('numbers each tile for the flip and keeps the length in the accessible name', () => {
+    const html = renderAnswers([make('seer', 1, 1)], { query: 'x' });
+    expect(html).toContain('style="--i:0">S');
+    expect(html).toContain('style="--i:3">R');
+    expect(html).toContain('seer, 4 letters.');
   });
 });
 
@@ -117,7 +107,6 @@ describe('spoiler mode', () => {
     expect(html).toContain('data-reveal-answers');
     expect(html).toContain('Reveal 2 answers');
     expect(html).not.toContain('data-answer=');
-    expect(html).not.toContain('class="lensbar"');
     expect(html).not.toContain('Related words');
   });
 
@@ -203,5 +192,18 @@ describe('meaning disclosure', () => {
   it('keeps the links inside the disclosure', () => {
     const html = renderMeaning(DEF, REF, LINKS, 'tide', [], { open: true });
     expect(html.indexOf('Search elsewhere')).toBeGreaterThan(html.indexOf('bodywrap'));
+  });
+});
+
+describe('spoiler mode with a length set', () => {
+  it('counts only what the length would show', () => {
+    expect(renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 4, hidden: true })).toContain('Reveal 2 answers');
+    expect(renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 5, hidden: true })).toContain('Reveal 1 related word<');
+  });
+
+  it('has nothing to hide when the length matches nothing, so the hand-off shows', () => {
+    const html = renderAnswers(ANSWERS, { query: 'x' }, { lengthFilter: 9, hidden: true });
+    expect(html).not.toContain('data-reveal-answers');
+    expect(html).toContain('9 letters');
   });
 });
