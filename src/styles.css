@@ -154,8 +154,17 @@ body.locked { overflow: hidden; }
 .clear { border: 0; background: transparent; color: var(--ink-3); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; }
 
 /* Length (every layout) and letters (wide screens) under the clue. */
-.controls { display: flex; flex-wrap: wrap; gap: 24px 32px; margin-top: 14px; }
-.lenctl, .letctl { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* On a phone the two share one row: a stepper for the length, the letters box taking the rest. */
+.controls { display: flex; gap: 12px; margin-top: 14px; }
+.lenctl, .letctl { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.lenctl { flex: none; }
+.letctl { flex: 1; }
+.stepper { display: inline-flex; align-items: center; height: 46px; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; overflow: hidden; }
+.stepper button { width: 42px; height: 100%; border: 0; background: transparent; color: var(--blue); font-size: 22px; line-height: 1; padding: 0; }
+.stepper button:disabled { color: var(--dim); cursor: default; }
+.stepper button:active:not(:disabled) { background: var(--rule-2); }
+.stepval { min-width: 40px; text-align: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+.lenval, #len, .ticks { display: none; }
 /* Letters you have: each one a tag. Sized for a thumb here; wide screens make them larger. */
 .tagbox {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 46px; padding: 4px 6px;
@@ -170,10 +179,12 @@ body.locked { overflow: hidden; }
 .tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 15px; }
 .tagbox input { flex: 1; min-width: 80px; height: 34px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
 .tagbox input::placeholder { color: var(--ink-3); }
+/* Once there is a tag, the placeholder has done its job; on a phone it would only clip beside the tags. */
+.tagbox:has(.tag) input::placeholder { color: transparent; }
 .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
 .lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
 #len { width: 100%; height: 36px; margin: 0; accent-color: var(--blue); }
-.ticks { display: flex; justify-content: space-between; margin-top: -4px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.ticks { justify-content: space-between; margin-top: -4px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 /* Colour only: a bolder label would be wider and nudge its neighbours. */
 .ticks .on { color: var(--blue); }
 .form-error { color: var(--bad); font-size: 13px; margin-top: 6px; }
@@ -431,10 +442,12 @@ body.locked { overflow: hidden; }
   .field input, .field.longq input { font-size: 44px; line-height: 1.25; padding: 4px 0 10px; }
   .go { display: none; }
 
-  .controls { margin-top: 0; }
-  .lenctl, .letctl { gap: 10px; }
-  #len { height: 44px; }
-  .ticks { margin-top: -6px; }
+  .controls { margin-top: 0; flex-wrap: wrap; gap: 24px 32px; }
+  .lenctl, .letctl { flex: 1 1 220px; gap: 10px; }
+  .stepper { display: none; }
+  .lenval { display: inline; }
+  #len { display: block; height: 44px; }
+  .ticks { display: flex; margin-top: -6px; }
   .tagbox { gap: 8px; min-height: 56px; padding: 6px 8px; }
   .tag { height: 40px; padding-left: 12px; font-size: 20px; }
   .tag button { font-size: 16px; }

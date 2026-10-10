@@ -53,11 +53,15 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
            known letters can be shown, so only those apply. The slider's track
            and ticks are built from lengths() in setLength. -->
       <div class="controls">
-        <label class="lenctl">
-          <span class="ctl-head"><span class="ctl-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
-          <input id="len" type="range" min="0" max="${lengths().length}" step="1" value="0" aria-valuetext="Any length">
+        <div class="lenctl">
+          <span class="ctl-head"><span class="ctl-label" id="length-label">Length</span><span class="lenval" id="lenval">Any length</span></span>
+          <!-- Two faces of one control: a stepper on phones, where a slider's stops are too close for a thumb and its track too tall for the header; the slider on wide screens. -->
+          <div class="stepper" id="stepper" role="group" aria-labelledby="length-label">
+            <button type="button" data-step="-1" aria-label="Shorter">−</button><span class="stepval" id="stepval" aria-live="polite">Any</span><button type="button" data-step="1" aria-label="Longer">+</button>
+          </div>
+          <input id="len" type="range" min="0" max="${lengths().length}" step="1" value="0" aria-labelledby="length-label" aria-valuetext="Any length">
           <span class="ticks" id="ticks" aria-hidden="true"></span>
-        </label>
+        </div>
         <div class="letctl">
           <span class="ctl-label" id="letters-label">Letters you have</span>
           <div class="tagbox" id="tagbox">
@@ -73,7 +77,7 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
   const $ = <T extends HTMLElement>(id: string) => view.querySelector<T>(`#${id}`)!;
   const q = $<HTMLInputElement>('q'), out = $('out'), form = $<HTMLFormElement>('form');
   const formError = $('formError'), clearBtn = $('clear');
-  const len = $<HTMLInputElement>('len'), ticks = $('ticks'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
+  const len = $<HTMLInputElement>('len'), ticks = $('ticks'), stepper = $('stepper'), tagin = $<HTMLInputElement>('tagin'), field = $('field');
   const sections = { meaning: '', answers: '' };
 
   /** The slider's exact length (null = any), and the letters already known, in any order. */
@@ -409,14 +413,18 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
     // Track and tick labels come from the same list, so they cannot drift apart across layouts.
     len.max = String(stops.length);
     if (ticks.childElementCount !== stops.length + 1) ticks.innerHTML = `<span>Any</span>${stops.map((s) => `<span>${s}</span>`).join('')}`;
-    len.value = String(n === null ? 0 : stops.indexOf(n) + 1);
+    const at = n === null ? 0 : stops.indexOf(n) + 1;
+    len.value = String(at);
     const label = n === null ? 'Any length' : `${n} letters`;
     $('lenval').textContent = label;
+    $('stepval').textContent = n === null ? 'Any' : String(n);
     len.setAttribute('aria-valuetext', label);
-    ticks.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === Number(len.value)));
+    ticks.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i === at));
+    stepper.querySelectorAll<HTMLButtonElement>('button').forEach((b) => { b.disabled = at + Number(b.dataset.step) < 0 || at + Number(b.dataset.step) > stops.length; });
   }
-  len.addEventListener('input', () => {
-    setLength(lengths()[Number(len.value) - 1] ?? null);
+  /** The length moved, by either face of the control. */
+  function onLengthInput(at: number) {
+    setLength(lengths()[at - 1] ?? null);
     // Filter what is on screen now; onConstraintInput refetches for the new length after a pause.
     // With nothing searched yet there is nothing to filter, and the blank board stays as it is.
     if (current || live) {
@@ -424,6 +432,11 @@ export function mountSolver(view: HTMLElement, shell: Shell): Solver {
       paintAnswers();
     }
     onConstraintInput();
+  }
+  len.addEventListener('input', () => onLengthInput(Number(len.value)));
+  stepper.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-step]');
+    if (b) onLengthInput(Number(len.value) + Number(b.dataset.step));
   });
 
   function setLetters(next: string) {

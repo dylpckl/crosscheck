@@ -216,11 +216,8 @@ collapsed line, answers as cards that turn over, and Recent at the bottom.
 │  CLUE                        │
 │  tide        (serif, 34px) 🔍│  ← one input, solve button trailing it
 │  ─────────────────────────── │
-│  LENGTH           Any length │
-│  ●─────────────────────────  │  ← slider: Any, 3 … 8
-│  Any  3   4   5   6   7   8  │
-│  LETTERS YOU HAVE            │
-│  [N×][A×] Type a letter      │  ← tags; matching tiles light up
+│  LENGTH    LETTERS YOU HAVE  │
+│  [− Any +] [N×][A×] Type a…  │  ← stepper Any, 3 … 8; tags light tiles
 ├──────────────────────────────┤
 │  MEANING ⌄                   │
 │  tide  n. The periodic rise… │  ← one line; tap to open the cards
@@ -251,17 +248,19 @@ transitions between `0fr` and `1fr`, which lets the browser measure the content
 without any height being hardcoded. Where motion is not wanted, both changes
 simply apply at once. No animation library.
 
-**Length** is a slider under the clue, the same control as desktop with a
-shorter track: Any, then 3 to 8. In the shipped clue bank, 3 to 8 letters
-covers 94% of published answers, and seven stops across a phone-width track
-is what a thumb lands on; the long tail is what the Google hand-off is for.
+**Length** is a stepper under the clue, sharing a row with the letters box:
+Any, then 3 to 8. It is the same control as the desktop slider with a
+different face, since a slider's stops are too close for a thumb and its
+track too tall for the header. In the shipped clue bank, 3 to 8 letters
+covers 94% of published answers; the long tail is what the Google hand-off
+is for.
 It is a standing constraint: it sets `SolveRequest.length` (refetching half
 a second after the last move, mid-search or not) and filters strictly, so a
 length with no answers shows the hand-off naming that length rather than
 every length. A longer length arriving from a link or history means any
 length on a phone.
 
-**Letters you have** is the desktop tag box under the slider, sized for a
+**Letters you have** is the desktop tag box beside the stepper, sized for a
 thumb: each letter typed becomes a tag, Backspace removes the last. Letters
 re-rank and highlight, never filter or refetch. There is no positional
 pattern input; a pattern from history or a link becomes its length plus its
