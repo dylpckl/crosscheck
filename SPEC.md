@@ -205,76 +205,101 @@ service worker.
 
 ## 5. UI spec (mobile)
 
-Single screen, portrait-first, everything reachable with one thumb.
+Single screen, portrait-first, everything reachable with one thumb. Phones
+and wide screens speak with one voice, and §5b only widens it: the clue set
+large in the display serif, a length control under it (a stepper here, a
+slider on wide screens), Meaning as one collapsed line, answers as cards
+that turn over, and Recent at the bottom.
 
 ```
 ┌──────────────────────────────┐
-│  Crosscheck                  │  ← app name, small
+│  crosscheck                ⚙ │  ← app bar
+│  CLUE                        │
+│  tide        (serif, 34px) 🔍│  ← one input, solve button trailing it
+│  ─────────────────────────── │
+│  LENGTH    LETTERS YOU HAVE  │
+│  [− Any +] [N×][A×] Type a…  │  ← stepper Any, 3 … 8; tags light tiles
+├──────────────────────────────┤
+│  MEANING ⌄                   │
+│  tide  n. The periodic rise… │  ← one line; tap to open the cards
+│  ─────────────────────────── │
 │ ┌──────────────────────────┐ │
-│ │ ocean current            │ │  ← one input, autofocus, enterkeyhint=search
+│ │ [N][E][A][P]             │ │  ← top published answer outlined
+│ │ n. The tide of least…    │ │
 │ └──────────────────────────┘ │
-│ ┌────────┐                   │
-│ │ ?I??   │  pattern (optional, collapsed behind a "pattern" chip)
-│ └────────┘                   │
-│                              │
-│  ANSWERS                     │
-│  T I D E                     │  ← letter tiles; score orders, isn't shown
-│  a periodic rise and fall…   │  ← gloss, one line
-│  E D D Y                     │
-│  R I P C U R R E N T         │  (dimmed if !fitsPattern)
-│                              │
-│  MEANING                     │
-│  ocean current  /ˈoʊʃən/  ▶  │  ← audio on tap
-│  n. a continuous, directed…  │
-│  ⌄ 2 more senses             │
-│                              │
-│  ABOUT                       │
-│  [thumb] Ocean current       │  ← Wikipedia card, taps out
-│  An ocean current is a…      │
-│                              │
-│  Wordplays · Google · DDG    │  ← link row
-│                              │
+│ ┌──────────────────────────┐ │
+│ │ [E][B][B]                │ │  ← every card the same shape:
+│ │ v. to flow back or recede│ │    tiles, then the gloss
+│ └──────────────────────────┘ │
 │  RECENT                      │
-│  tide · ?I??   sc_d_ · …     │  ← history chips
+│  tide · ocean current · …    │  ← pills, one row, scrolls sideways
 └──────────────────────────────┘
 ```
 
 Sections keep a fixed order for every search: **Meaning, Answers**. Meaning
 gathers everything that answers "what is this" — the dictionary entry, the
 Wikipedia summary, and the links out — behind one disclosure, each card naming
-its own source. Recent searches sit directly under the input as a single row of
-pills that scrolls sideways. It is closed on every search: answers are what
-was asked for, and the definition is one tap away when it is wanted. Collapsed
-it is a single tappable line carrying the first sense; open it shows the cards.
-The answer list is never truncated either way. A rule above the Answers header
-separates the two.
+its own source. It is closed on every search: answers are what was asked for,
+and the definition is one tap away when it is wanted. Collapsed it is a single
+tappable line carrying the first sense; open it shows the cards. A rule under
+it marks where the answers begin. The answer list is never truncated.
 
 Both states stay in the DOM so the open and close can animate: a grid row
 transitions between `0fr` and `1fr`, which lets the browser measure the content
-without any height being hardcoded. Filtering by length re-renders the answers
-inside a View Transition, and each row carries a `view-transition-name` so rows
-morph rather than jump. Where View Transitions are missing, or motion is not
-wanted, both changes simply apply at once. No animation library.
+without any height being hardcoded. Where motion is not wanted, both changes
+simply apply at once. No animation library.
 
-Answer length is a segmented row under the Answers header, labelled "Length":
-"All" followed by one segment per length that actually has answers. Counts stay in the accessible label
-rather than on screen, because a number beside a number reads as one ambiguous
-pair. The row scrolls sideways so it never wraps, whatever the clue.
-It is a view-time filter over answers already fetched, so it costs no request
-and touches neither the quota nor the cache key. The row is hidden when every
-answer is the same length, and a selection that matches nothing is ignored.
+**Length** is a stepper under the clue, sharing a row with the letters box:
+Any, then 3 to 8. It is the same control as the desktop slider with a
+different face, since a slider's stops are too close for a thumb and its
+track too tall for the header. In the shipped clue bank, 3 to 8 letters
+covers 94% of published answers; the long tail is what the Google hand-off
+is for.
+It is a standing constraint: it sets `SolveRequest.length` (refetching half
+a second after the last move, mid-search or not) and filters strictly, so a
+length with no answers shows the hand-off naming that length rather than
+every length. A longer length arriving from a link or history means any
+length on a phone.
+
+**Letters you have** is the desktop tag box beside the stepper, sized for a
+thumb: each letter typed becomes a tag, Backspace removes the last. Letters
+re-rank and highlight, never filter or refetch. There is no positional
+pattern input; a pattern from history or a link becomes its length plus its
+known letters.
+
+**Answers** are cards, every one the same shape — tiles, then the gloss
+underneath — with the top published answer outlined in blue. Tiles are
+solid, no border, bold monospace; nine letters and up shrink a size. There is no
+heading over the cards and no length number beside them. Related words keep
+their own labelled list under the published answers.
+
+**Empty and loading** show a face-down board: a blank Meaning line and rows
+of blank tiles, so the input, the Meaning line and the first card never move
+when results land. The tiles turn over Wordle-style, row by row, as answers
+arrive. The first answers wait 250ms so the board turns in one wave; repaints
+wait for a flip to finish; later answers turn over on their own. Until there
+is any history, one line of welcome and two example buttons sit above the
+board.
+
+**Recent** sits under the answers, with its own heading: a single row of
+pills that scrolls sideways. Under the input, it outranked the answers.
 
 Behavior:
 
-- Submit on Enter and on input blur if text changed. Debounce 300ms on typing
-  for a "live" feel only when online and the query is ≥ 3 chars.
-- The pattern field is parked: hidden on phones while the idea is
-  reconsidered. The parser, ranking and highlighting behind it still work,
-  and desktop exposes the same constraints as a slider and letter tags (§5b).
-- Tap an answer tile row → copies the grid-form answer to clipboard and shows
-  a toast. Long-press → sets it as the query (chain lookups).
-- Sections render independently as each provider resolves. Skeleton rows
-  while loading; the answers section usually lands first.
+- Submit with the solve button trailing the clue, or the keyboard's Search
+  key (`enterkeyhint=search`), or just pause: search as you type is on
+  everywhere, debounced 450ms on phones once the query is 3 characters or
+  more, online only. Results already on screen stay until new ones land.
+- The search bar sits at the top and scrolls with the page: with the slider
+  it is tall enough that pinning it would cost the answers a third of the
+  screen.
+- A clue over 14 characters steps the input down a size, so more of it stays
+  in view.
+- Tap an answer card → copies the grid-form answer to clipboard and shows a
+  toast. Long-press → sets it as the query (chain lookups). Blank rows on
+  the face-down board do neither.
+- Sections render independently as each provider resolves; the answers
+  usually land first.
 - Errors show as a single muted line under the affected section
   ("Couldn't reach dictionary — showing cached result"). Never a modal.
 - Design tokens from the prototype are kept: cream `#EFE9DD`, ink `#1B1B1B`,
@@ -308,27 +333,20 @@ One centered column, max 1080px. Same DOM as mobile, rearranged by CSS grid
 └─────────────────────────────────────────────────────────┘
 ```
 
-- **Length** is a slider: Any, 3–15. It is a standing constraint: it sets
-  `SolveRequest.length` (refetching, including mid-search) and filters
-  strictly, so a length with no answers shows none rather than every length.
-- **Letters you have** is a tag box: each letter typed becomes a tag,
-  Backspace removes the last. Letters are `SolveRequest.letters`: they
-  re-rank and highlight, never filter or refetch. Positional patterns have
-  no desktop control; one arriving from history or a link becomes its
-  length plus its known letters, and the hidden pattern input is never read.
-- **Search as you type** has its own setting (`liveSearchDesktop`), on by
-  default, debounced 250ms. Results already on screen stay until new ones
-  land. A typed search reaches history only after resting 2s on it.
+- **Length** is a slider rather than the phone's stepper, with the full
+  range: Any, 3–15. A length past 8 set here is dropped if the window
+  narrows below the breakpoint, since the phone stepper cannot show it.
+- **Search as you type** is debounced 250ms here rather than the phone's
+  450ms. A typed search reaches history only after resting 2s on it.
 - **Meaning** is always open and holds its column from the start with a
   fixed height (size containment); long entries scroll inside the card.
-- **Answers** are full-width cards, tiles beside their gloss, no length
-  number or section heading. Related words show only when nothing published
-  came back, and then take the published rows' place; the Google hand-off
-  sits below the list.
-- **Empty and loading** show a face-down board: blank meaning card and rows
-  of blank tiles. When results land the tiles turn over Wordle-style, row by
-  row. The first answers wait 250ms so the board turns in one wave; repaints
-  wait for a flip to finish; later answers turn over on their own.
+- **Answers** are the same cards, tiles beside their gloss whatever the
+  length, with room reserved for six tiles so glosses line up. Related words
+  show only when nothing published came back, and then take the published
+  rows' place; the Google hand-off sits below the list.
+- **Empty and loading** are the phone's face-down board with the Meaning
+  card blank instead of the line; the welcome line is not shown.
+- **Recent** wraps instead of scrolling.
 - No layout shift: the scrollbar gutter is reserved and the top row's height
   never depends on the definition.
 
@@ -463,9 +481,12 @@ test/
 
 ## 9. Open questions (non-blocking, defaults chosen)
 
-- **Live-as-you-type vs submit only.** Resolved per layout: off by default on
-  phones (a toggle), on by default on desktop (its own toggle). Live mode
-  still costs Datamuse quota on every pause.
+- **Live-as-you-type vs submit only.** Resolved: on everywhere, no toggle.
+  The clue bank and corpus answer locally while you type; the Datamuse
+  quota (100k/day) is far beyond what pauses on a phone can spend.
+- **Search box at the top or the bottom.** Resolved: top. The bottom dock
+  moved the clue away from the length slider it belongs with, and with search
+  as you type the input is where the thumb already is.
 - **Answer count.** Default cap 24; the prototype showed ~8. Tune after use.
 - **Proper-noun answers.** Datamuse tags them `prop`. Default: keep them,
   since crosswords love them, but sort slightly lower than common words.

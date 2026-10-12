@@ -14,7 +14,6 @@
   --warn: #9A6A12;
   --bad: #A3362B;
   --scrim: rgba(27, 27, 27, .35);
-  --dock-fade: rgba(27, 27, 27, .07);
   /* Chrome sits a shade deeper than the page in both themes, which keeps the
      input the lightest surface either way and stops it merging with the bar. */
   --chrome: #E6DFD0;
@@ -41,7 +40,6 @@
   --warn: #D9A94A;
   --bad: #E07A6E;
   --scrim: rgba(0, 0, 0, .55);
-  --dock-fade: rgba(0, 0, 0, .4);
   --chrome: #121216;
   --chrome-edge: rgba(0, 0, 0, .6);
   --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.5);
@@ -117,6 +115,8 @@ body.locked { overflow: hidden; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 .chips a { text-decoration: none; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--rule); border-radius: 999px; padding: 9px 14px; font-size: 13.5px; color: var(--ink-2); min-height: 42px; }
 .chips a svg { width: 15px; height: 15px; color: var(--ink-3); }
+.chips a.primary { background: var(--blue); border-color: var(--blue); color: var(--blue-ink); }
+.chips a.primary svg { color: inherit; }
 .build { margin-top: 16px; font-size: 12px; color: var(--ink-3); }
 .build a { color: var(--ink-3); text-decoration: none; }
 .linkish { border: 0; background: transparent; color: var(--blue); font-size: 12px; padding: 4px 0; }
@@ -127,56 +127,71 @@ body.locked { overflow: hidden; }
 .view p.lead { color: var(--ink-2); margin: 0 0 18px; max-width: 60ch; }
 
 /* ---------- search ---------- */
+/*
+ * The clue and its length, in the chrome under the app bar. It scrolls with
+ * the page: with the length control the bar is tall enough that pinning it
+ * would cost the answers a third of a phone screen.
+ */
 .searchbar {
-  position: sticky; top: calc(48px + var(--sat)); z-index: 2;
-  background: var(--chrome); margin: 0 -18px; padding: 12px 18px 12px;
+  background: var(--chrome); margin: 0 -18px; padding: 10px 18px 14px;
   box-shadow: 0 1px 0 var(--rule), 0 8px 16px -10px var(--chrome-edge);
 }
 
-/*
- * Bottom search: only the query docks, so the letters field and the length row
- * stay with the answers they act on. The dock is fixed, so it leaves the sticky
- * bar's flow entirely and the view pads itself to keep the last row clear.
- */
-body.search-bottom .querybar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
-  width: 100%; max-width: 480px; margin: 0 auto;
-  background: var(--chrome); padding: 10px 18px calc(10px + var(--sab));
-  box-shadow: 0 -1px 0 var(--rule), 0 -10px 24px var(--dock-fade);
-}
-body.search-bottom .searchbar { padding: 0; margin: 0; background: transparent; box-shadow: none; }
-body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
-.search { display: flex; gap: 8px; }
-.field {
-  flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;
-  background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; padding: 0 12px; height: 50px;
-}
-.field:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-tint); }
-.field input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 18px; height: 100%; }
+.search { display: flex; gap: 12px; align-items: flex-end; }
+/* Solve, trailing the clue. Wide screens drop it: Enter and search-as-you-type cover it there. */
+.go { flex: none; width: 44px; height: 44px; margin-bottom: 6px; border-radius: 12px; border: 0; background: var(--blue); color: var(--blue-ink); display: grid; place-items: center; }
+.go svg { width: 20px; height: 20px; }
+.ctl-label { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.querybar > .ctl-label { display: block; margin-bottom: 2px; }
+/* The clue is set large in the display serif, on a rule rather than in a box: the same voice on every layout. */
+.field { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; border-bottom: 2px solid var(--dim); }
+.field:focus-within { border-color: var(--blue); }
+.field input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: italic 400 34px/1.2 Georgia, "Times New Roman", serif; padding: 2px 0 8px; }
+/* A long clue steps down a size on a phone, so more of it stays in view (see fitClue in ui/solver.ts). */
+.field.longq input { font-size: 26px; }
 .field input::-webkit-search-cancel-button { display: none; }
-.field input::placeholder { color: var(--ink-3); }
+.field input::placeholder { color: var(--dim); }
 .clear { border: 0; background: transparent; color: var(--ink-3); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; }
-.go { flex: none; width: 50px; height: 50px; border-radius: 12px; border: 0; background: var(--blue); color: var(--blue-ink); display: grid; place-items: center; }
-.go svg { width: 22px; height: 22px; }
-.constraints { display: flex; align-items: center; gap: 10px; margin-top: 8px; min-height: 38px; }
-.chip {
-  border: 1px solid var(--rule); background: transparent; color: var(--ink-2); border-radius: 999px;
-  padding: 6px 12px; font-size: 13px; line-height: 1; display: inline-flex; align-items: center; gap: 6px; min-height: 34px;
+
+/* Length (every layout) and letters (wide screens) under the clue. */
+/* On a phone the two share one row: a stepper for the length, the letters box taking the rest. */
+.controls { display: flex; gap: 12px; margin-top: 14px; }
+.lenctl, .letctl { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.lenctl { flex: none; }
+.letctl { flex: 1; }
+.stepper { display: inline-flex; align-items: center; height: 46px; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; }
+.stepper button { width: 42px; height: 100%; border: 0; border-radius: 10px; background: transparent; color: var(--blue); font-size: 22px; line-height: 1; padding: 0; }
+/* The ring is drawn inside the button, so the box's rounded edge cannot cut it off. */
+.stepper button:focus-visible { outline-offset: -3px; }
+.stepper button[aria-disabled="true"] { color: var(--dim); cursor: default; }
+.stepper button:active:not([aria-disabled="true"]) { background: var(--rule-2); }
+.stepval { min-width: 40px; text-align: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+.lenval, #len, .ticks { display: none; }
+/* Letters you have: each one a tag. Sized for a thumb here; wide screens make them larger. */
+.tagbox {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 46px; padding: 4px 6px;
+  background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;
 }
-.chip[aria-pressed="true"] { background: var(--blue-tint); border-color: var(--blue); color: var(--blue); }
-.pattern {
-  display: flex; align-items: center; gap: 8px; flex: 0 1 220px; min-width: 150px; height: 38px;
-  border: 1.5px solid var(--rule); border-radius: 10px; background: var(--paper); padding: 0 8px 0 10px; color: var(--ink-3);
+.tagbox:focus-within { border-color: var(--blue); }
+.tags { display: contents; }
+.tag {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 0 0 10px; border-radius: 8px;
+  background: var(--blue); color: var(--blue-ink); font: 700 17px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
-.pattern:focus-within { border-color: var(--blue); color: var(--blue); }
-.pattern input {
-  flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink);
-  font: 500 15px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .18em; text-transform: uppercase;
+.tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 15px; }
+.tagbox input { flex: 1; min-width: 80px; height: 34px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
+.tagbox input::placeholder { color: var(--ink-3); }
+/* On a phone, once there is a tag the placeholder would only clip beside it: drop it and the width it reserved. */
+@media (max-width: 1023px) {
+  .tagbox:has(.tag) input { min-width: 44px; }
+  .tagbox:has(.tag) input::placeholder { color: transparent; }
 }
-.pattern input::placeholder { font: 14px -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
-.constraints .hint { font-size: 12px; color: var(--ink-3); flex: 1; min-width: 0; }
-.constraints .hint b { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
-.constraints .hint.err { color: var(--bad); }
+.ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
+.lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
+#len { width: 100%; height: 36px; margin: 0; accent-color: var(--blue); }
+.ticks { justify-content: space-between; margin-top: -4px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* Colour only: a bolder label would be wider and nudge its neighbours. */
+.ticks .on { color: var(--blue); }
 .form-error { color: var(--bad); font-size: 13px; margin-top: 6px; }
 
 /* ---------- sections ---------- */
@@ -230,6 +245,8 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 #sec-meaning { margin-top: 16px; }
 /* Meaning leads and collapses to one line; the divider marks where answers begin. */
 #sec-answers { border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 20px; }
+/* The cards speak for themselves; the heading, with its count and cache note, is for screen readers only. */
+#sec-answers > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; }
 .subhead { margin: 20px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .subhead .count { font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 /* The exit the reader would take anyway, offered before they have to go looking for it. */
@@ -243,13 +260,10 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 .peek.bad { color: var(--bad); }
 .handoff-btn svg { width: 15px; height: 15px; color: var(--ink-3); flex: none; }
 
-/* empty state */
-.empty-state { padding: 42px 0 24px; text-align: center; }
-.empty-state .motif { display: flex; justify-content: center; gap: 4px; margin-bottom: 22px; opacity: .55; }
-.empty-state .motif .tile { width: 32px; height: 34px; font-size: 16px; }
-.empty-state h2 { font: 500 21px/1.25 Georgia, "Times New Roman", serif; letter-spacing: -.01em; margin: 0 0 8px; color: var(--ink); text-transform: none; }
-.empty-state p { margin: 0 auto; max-width: 30ch; color: var(--ink-3); font-size: 14.5px; line-height: 1.45; }
-.examples { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 24px; }
+/* a line of welcome above the face-down board, first run only */
+.intro { padding: 18px 0 2px; }
+.intro p { margin: 0 0 12px; color: var(--ink-2); font-size: 14.5px; line-height: 1.45; max-width: 38ch; }
+.examples { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .examples .eyebrow { margin-bottom: 0; }
 .examples button {
   border: 1px solid var(--rule); background: transparent; color: var(--ink-2); border-radius: 999px;
@@ -257,41 +271,57 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 }
 .examples button:active { background: var(--rule-2); }
 
-/* answers */
-.lenrow { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; }
-.lenlabel { flex: none; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
-.lens { display: flex; overflow-x: auto; scrollbar-width: none; padding: 1px 0; min-width: 0; }
-.lens::-webkit-scrollbar { display: none; }
-.lensbar { display: inline-flex; flex: none; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; background: var(--paper); }
-.lensbar button {
-  flex: none; border: 0; border-left: 1px solid var(--rule); background: transparent; color: var(--ink-2);
-  min-width: 44px; height: 40px; padding: 0 14px; font-size: 15px; font-variant-numeric: tabular-nums;
-}
-.lensbar button:first-child { border-left: 0; }
-.lensbar button[aria-pressed="true"] { background: var(--blue); color: var(--blue-ink); }
-.answers { display: flex; flex-direction: column; }
+/*
+ * Answers: cards, every one the same shape, the top published answer set
+ * apart. On a phone the gloss goes under the tiles; desktop sets it beside.
+ */
+.answers { display: flex; flex-direction: column; gap: 8px; }
 .row {
   display: grid; grid-template-columns: 1fr; grid-template-areas: "tiles" "gloss";
-  gap: 6px; padding: 14px 0; border-top: 1px solid var(--rule-2); text-align: left;
-  background: transparent; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; color: inherit; user-select: none;
+  gap: 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 14px; text-align: left;
+  background: transparent; width: 100%; color: inherit; user-select: none;
 }
-.row:first-child { border-top: 0; }
 .row:active { background: var(--rule-2); }
 .row.dim { opacity: .38; }
-.tiles { grid-area: tiles; display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.answers.published .row:first-child { border-color: var(--blue); background: var(--blue-tint); }
+.tiles { grid-area: tiles; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .tile {
-  width: 28px; height: 30px; display: grid; place-items: center;
-  background: var(--paper); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px;
-  font: 600 15px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink);
+  width: 34px; height: 36px; display: grid; place-items: center;
+  background: var(--rule); border-radius: 4px;
+  font: 700 18px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink);
 }
-.tile.hit { border-color: var(--blue); color: var(--blue); background: var(--blue-tint); }
-.tiles.long .tile { width: 23px; height: 27px; font-size: 13px; border-radius: 3px; }
-.tiles.long { gap: 2px; }
+.tile.hit { background: var(--blue); color: var(--blue-ink); }
+.tiles.long { gap: 3px; }
+.tiles.long .tile { width: 28px; height: 32px; font-size: 15px; }
 .gap { width: 8px; }
 .tiles.long .gap { width: 5px; }
-.len { margin-left: 6px; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.gloss { grid-area: gloss; font-size: 15px; line-height: 1.4; color: var(--ink-2); }
-.gloss .pos { font-style: italic; color: var(--ink-3); margin-right: 4px; }
+.gloss { grid-area: gloss; font-size: 14.5px; line-height: 1.4; color: var(--ink); }
+.gloss .pos { font-style: italic; color: var(--ink-2); margin-right: 4px; }
+
+/*
+ * The empty board: rows of face-down tiles, and a blank line where Meaning
+ * goes. When results land, each tile turns over on its horizontal axis,
+ * Wordle-style, left to right and row by row; it shows its face-down colour
+ * until the half-turn hides it.
+ */
+.blankrows .row { cursor: default; }
+.blankrows .row:hover, .blankrows .row:active { background: transparent; }
+.blankrows .tile, .flip .tile { --face-down: var(--chrome); }
+.blankrows .tile { background: var(--face-down); box-shadow: inset 0 0 0 1px var(--rule); }
+.blankrows .bar, .blankmeaning .bar { display: block; height: 12px; border-radius: 6px; background: var(--rule-2); }
+.blankrows .bar { width: 55%; }
+.blankmeaning .bar.w70 { width: 70%; margin: 6px 0 8px; }
+.flip .tile { animation: turn .5s ease-in-out both; animation-delay: calc(min(var(--r, 0), 6) * 140ms + var(--i, 0) * 70ms); }
+.flip .gloss { animation: fadein .3s ease both; animation-delay: calc(min(var(--r, 0), 6) * 140ms + 350ms); }
+.flip .row.shown .tile, .flip .row.shown .gloss { animation: none; }
+@keyframes turn {
+  0% { transform: rotateX(0); background: var(--face-down); color: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
+  49.9% { transform: rotateX(90deg); background: var(--face-down); color: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
+  50% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0); }
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .flip .tile, .flip .gloss { animation: none; } }
 
 /* meaning */
 .card { background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; }
@@ -328,21 +358,15 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
 .links a { text-decoration: none; font-size: 13px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-2); display: inline-flex; align-items: center; gap: 5px; min-height: 36px; }
 .links a svg { width: 11px; height: 11px; }
 
-/* recent: one line under the input that scrolls sideways rather than wrapping */
-.recent { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 12px 0 4px; margin-bottom: 4px; }
+/* recent: under the answers; one line that scrolls sideways on a phone, wraps on a wide screen */
+.recent-sec { margin-top: 24px; }
+.recent { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 1px 0; }
 .recent::-webkit-scrollbar { display: none; }
 .recent button {
   flex: none; border: 1px solid var(--rule); background: transparent; color: var(--ink-2); border-radius: 999px;
   padding: 0 14px; font-size: 13.5px; display: inline-flex; gap: 6px; align-items: center; min-height: 38px; white-space: nowrap;
 }
 .recent button code { font: 500 12px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .12em; color: var(--blue); }
-
-/* skeleton */
-.sk { height: 30px; border-radius: 6px; background: linear-gradient(90deg, var(--rule-2), var(--paper), var(--rule-2)); background-size: 200% 100%; animation: sh 1.1s linear infinite; margin: 10px 0; }
-.sk.short { width: 55%; height: 14px; margin-top: 4px; }
-.sk.card { height: 110px; border-radius: 14px; }
-@keyframes sh { to { background-position: -200% 0; } }
-@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
 
 /* toast */
 .toast {
@@ -402,8 +426,8 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
  * Wide screens get one centered column: the clue and its constraints on the
  * left with Meaning beside them, answers full width underneath. #out is
  * flattened with display: contents so its sections join the view's grid.
+ * The phone and desktop share one voice; this block only widens it.
  */
-.desk-only, .desk-controls { display: none; }
 @media (min-width: 1024px) {
   /* Filtering can shorten the page past the fold; keep the scrollbar's space so nothing jumps sideways. */
   html { scrollbar-gutter: stable; }
@@ -416,39 +440,23 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
     gap: 36px 48px; align-items: start; align-content: start;
   }
   #out { display: contents; }
-  .mobile-only { display: none; }
+  .intro { display: none; }
 
-  .ctl-label { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
-  .desk-only { display: block; margin-bottom: 8px; }
-
-  .searchbar { grid-area: search; position: static; margin: 0; padding: 0; background: none; box-shadow: none; display: flex; flex-direction: column; gap: 26px; }
-  .field { background: transparent; border: 0; border-bottom: 2px solid var(--dim); border-radius: 0; padding: 0; height: auto; }
-  .field:focus-within { border-color: var(--blue); box-shadow: none; }
-  .field input { font: italic 400 44px/1.25 Georgia, "Times New Roman", serif; padding: 4px 0 10px; height: auto; }
-  .field input::placeholder { color: var(--dim); }
+  .searchbar { grid-area: search; margin: 0; padding: 0; background: none; box-shadow: none; display: flex; flex-direction: column; gap: 26px; }
+  .querybar > .ctl-label { margin-bottom: 8px; }
+  .field input, .field.longq input { font-size: 44px; line-height: 1.25; padding: 4px 0 10px; }
   .go { display: none; }
 
-  .desk-controls { display: flex; flex-wrap: wrap; gap: 24px 32px; }
-  .lenctl, .letctl { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-  .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
-  .lenval { font-size: 15px; font-variant-numeric: tabular-nums; }
-  #len { width: 100%; height: 44px; margin: 0; accent-color: var(--blue); }
-  .ticks { display: flex; justify-content: space-between; margin-top: -6px; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  /* Colour only: a bolder label would be wider and nudge its neighbours. */
-  .ticks .on { color: var(--blue); }
-  .tagbox {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px;
-    background: var(--paper); border: 1.5px solid var(--rule); border-radius: 12px; cursor: text;
-  }
-  .tagbox:focus-within { border-color: var(--blue); }
-  .tags { display: contents; }
-  .tag {
-    display: inline-flex; align-items: center; gap: 2px; height: 40px; padding: 0 2px 0 12px; border-radius: 8px;
-    background: var(--blue); color: var(--blue-ink); font: 700 20px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  .tag button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 16px; }
-  .tagbox input { flex: 1; min-width: 90px; height: 40px; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 0 6px; }
-  .tagbox input::placeholder { color: var(--ink-3); }
+  .controls { margin-top: 0; flex-wrap: wrap; gap: 24px 32px; }
+  .lenctl, .letctl { flex: 1 1 220px; gap: 10px; }
+  .stepper { display: none; }
+  .lenval { display: inline; }
+  #len { display: block; height: 44px; }
+  .ticks { display: flex; margin-top: -6px; }
+  .tagbox { gap: 8px; min-height: 56px; padding: 6px 8px; }
+  .tag { height: 40px; padding-left: 12px; font-size: 20px; }
+  .tag button { font-size: 16px; }
+  .tagbox input { min-width: 90px; height: 40px; }
 
   /*
    * Meaning: its own column, always open, no disclosure. Size containment
@@ -464,15 +472,13 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   .meaning .bodywrap { flex: 1; min-height: 0; grid-template-rows: 1fr; opacity: 1; }
   .meaning .bodywrap > .inner { height: 100%; }
   .meaning .panel { height: 100%; box-sizing: border-box; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; padding: 20px 22px; border-radius: 16px; }
-  .blankmeaning .bar { display: block; height: 12px; border-radius: 6px; background: var(--rule-2); margin-bottom: 16px; }
+  .blankmeaning .bar { margin-bottom: 16px; }
   .blankmeaning .bar.w40 { width: 40%; height: 20px; margin-bottom: 22px; }
   .blankmeaning .bar.w80 { width: 80%; }
   .blankmeaning .bar.w60 { width: 60%; }
 
-  /* Answers: full-width cards, tiles beside their gloss, the top answer set apart. */
-  #sec-answers, .empty-state { grid-area: answers; }
-  #sec-answers { border-top: 0; padding-top: 0; margin: 0; }
-  #sec-answers > h2, #sec-answers .lenrow, .len { display: none; }
+  /* Answers: full-width cards, tiles beside their gloss whatever the length. */
+  #sec-answers { grid-area: answers; border-top: 0; padding-top: 0; margin: 0; }
   /*
    * Related words only stand in when nothing published came back, and then
    * take the published rows' place, unlabelled, so the board starts at the
@@ -482,45 +488,15 @@ body.search-bottom .view { padding-bottom: calc(96px + var(--sab)); }
   #sec-answers { display: flex; flex-direction: column; }
   #sec-answers .subhead, .answers.published ~ .subhead + .answers { display: none; }
   #sec-answers .handoff { order: 1; padding: 18px 0 0; }
-  .answers { gap: 8px; }
-  .row {
-    grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; align-items: center;
-    gap: 10px 28px; padding: 14px 18px; border: 1px solid var(--rule); border-radius: 14px; cursor: pointer;
-  }
-  .row:first-child { border-top: 1px solid var(--rule); }
+  .row { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tiles gloss"; align-items: center; gap: 10px 28px; padding: 14px 18px; cursor: pointer; }
   .row:hover { background: var(--rule-2); }
   .row.dim { opacity: 1; }
-  .answers.published .row:first-child { border-color: var(--blue); background: var(--blue-tint); }
   /* Room for six tiles, so glosses line up for the short fill that makes up most answers. */
   .tiles { gap: 5px; min-width: 342px; }
-  .tile { width: 52px; height: 52px; border: 0; border-radius: 4px; background: var(--rule); font: 700 26px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  .tile.hit { background: var(--blue); color: var(--blue-ink); }
-  .tiles.long { gap: 3px; }
-  .tiles.long .tile { width: 36px; height: 40px; font-size: 19px; border-radius: 4px; }
-  .gloss { font-size: 16px; color: var(--ink); }
-
-  /*
-   * The empty board: rows of face-down tiles. When results land, each tile
-   * turns over on its horizontal axis, Wordle-style, left to right and row by
-   * row; it shows its face-down colour until the half-turn hides it.
-   */
-  .blankrows .row { cursor: default; }
-  .blankrows .row:hover { background: transparent; }
-  .blankrows .tile, .flip .tile { --face-down: var(--chrome); }
-  .blankrows .tile { background: var(--face-down); border: 1px solid var(--rule); }
-  .blankrows .bar { display: block; width: 55%; height: 12px; border-radius: 6px; background: var(--rule-2); }
-  .flip .tile { animation: turn .5s ease-in-out both; animation-delay: calc(min(var(--r, 0), 6) * 140ms + var(--i, 0) * 70ms); }
-  .flip .gloss { animation: fadein .3s ease both; animation-delay: calc(min(var(--r, 0), 6) * 140ms + 350ms); }
-  .flip .row.shown .tile, .flip .row.shown .gloss { animation: none; }
-  @keyframes turn {
-    0% { transform: rotateX(0); background: var(--face-down); color: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
-    49.9% { transform: rotateX(90deg); background: var(--face-down); color: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
-    50% { transform: rotateX(90deg); }
-    100% { transform: rotateX(0); }
-  }
-  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .flip .tile, .flip .gloss { animation: none; } }
+  .tile { width: 52px; height: 52px; font-size: 26px; }
+  .tiles.long .tile { width: 36px; height: 40px; font-size: 19px; }
+  .gloss { font-size: 16px; }
 
   #recent { grid-area: recent; }
-  .recent { flex-wrap: wrap; overflow: visible; padding: 0; margin: 0; }
+  .recent { flex-wrap: wrap; overflow: visible; padding: 0; }
 }

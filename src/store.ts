@@ -64,25 +64,21 @@ export function clearCache(): void {
 
 // ---- settings ----
 export type Theme = 'system' | 'light' | 'dark';
-export type SearchPosition = 'top' | 'bottom';
+/**
+ * Search as you type is not a setting: it is on everywhere. The local
+ * sources make it cheap, and a toggle for it outlived its reason once phones
+ * got the same layout as desktop. The search box sits at the top, no longer
+ * a choice either. Old stored keys for both are ignored.
+ */
 export interface Settings {
   theme: Theme;
-  liveSearch: boolean;
-  /**
-   * Search as you type on wide screens. A separate setting with its own
-   * default: on desktop the local sources make it cheap and it is the
-   * expected behaviour, on a phone it is opt-in.
-   */
-  liveSearchDesktop: boolean;
-  /** Where the search box sits: under the app bar, or docked in thumb reach. */
-  searchPosition: SearchPosition;
   /**
    * Spoiler mode: keep the answers behind a tap so a lookup can be read for
    * its meaning first. Off by default — answers are what most searches want.
    */
   hideAnswers: boolean;
 }
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', liveSearch: false, liveSearchDesktop: true, searchPosition: 'top', hideAnswers: false };
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', hideAnswers: false };
 export function getSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...read<Partial<Settings>>(SETTINGS_KEY, {}) };
 }
